@@ -1,0 +1,60 @@
+###################################################################################################
+# Config file for the Solar server
+###################################################################################################
+
+# Defines the logfile name. Logging to file only as daemon
+logfile                    /var/log/solar.log
+
+# Defines the PID file name, when running as daemon
+pidfile                    /tmp/SolarServer.pid
+
+# Pulse meter filename
+pulseMeterFile1            ./pulse1.txt
+pulseMeterFile2            ./pulse2.txt
+pulseMeterFile3            ./pulse3.txt
+
+# Server port
+server_port                8002
+
+# The pulses per kWh
+pulse1_pulsesperkwh        1000
+pulse2_pulsesperkwh        1000
+pulse3_pulsesperkwh        1000
+
+# Input pin numbers. Only pin numbers on the connector of Rasberry Pi are supported
+pulse1_gpio_input          GPIO22
+pulse2_gpio_input          GPIO23
+pulse3_gpio_input          GPIO17
+
+# Output pin for the LED
+pulse1_gpio_output         GPIO9
+pulse2_gpio_output         GPIO10
+pulse3_gpio_output         GPIO11
+
+# Output pin for the heart beat LED
+heartbeat_gpio_output      GPIO7
+
+serial_port_device         /dev/ttyAMA0
+serial_gpio_invert         GPIO4
+serial_invert              1
+serial_baudrate            115200
+serial_bits                8
+serial_stop_bits           1
+# parity: odd -1, no 0, even 1
+serial_parity              0
+
+smartmeter_import_kwh_low  1-0:1\.8\.1\((.*)\*kWh\)
+smartmeter_import_kwh_high 1-0:1\.8\.2\((.*)\*kWh\)
+smartmeter_export_kwh_low  1-0:2\.8\.1\((.*)\*kWh\)
+smartmeter_export_kwh_high 1-0:2\.8\.2\((.*)\*kWh\)
+smartmeter_import_kw       1-0:1\.7\.0\((.*)\*kW\)
+smartmeter_export_kw       1-0:2\.7\.0\((.*)\*kW\)
+smartmeter_gas             0-1:24\.2\.1\(.*W\)\((.*)\*m3\)
+
+amqp_host                  192.168.0.2
+amqp_port                  5672
+amqp_exchange              solarExchange
+amqp_user                  testuser
+amqp_password              testpassword
+amqp_routingkey            key
+amqp_vhost                 /

@@ -1,0 +1,33 @@
+###################################################################################################
+# Config file for SolarClient
+###################################################################################################
+
+# Log file name when running as daemon
+logfile             /var/log/solarclient.log
+
+# Pid file name when running as daemon
+pidfile             /tmp/SolarClient.pid
+
+
+# IP/address of Solar server
+address             192.168.0.2
+
+# Port of Solar server
+port                8002
+
+# MySQL Database name
+database_name       energy
+
+# Database host
+database_host       localhost
+
+# Database user
+database_user       solaruser
+
+# Database password
+database_password   solarpassword
+
+# Pulses in one kWh
+pulse0_pulsesperkwh 1000
+pulse1_pulsesperkwh 1000
+pulse2_pulsesperkwh 1000

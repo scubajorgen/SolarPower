@@ -1,0 +1,11 @@
+/solarclient/config.ini
+/solarclient/obj/*
+/solarclient/SolarClient
+
+
+/solarserver/config.ini
+/solarserver/obj/*
+/solarserver/Solar
+/solarserver/pulse*.txt
+/solarserver/external_libs
+
