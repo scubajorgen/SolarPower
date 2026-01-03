@@ -67,8 +67,6 @@ void* receiveTask(void* param)
             //accept
             int length      =sizeof(struct sockaddr_in);
             acceptSocket    = accept(server->serverSocket, (struct sockaddr*)&clAddr, (socklen_t*)&length);
-            server->logger.logInfo("Accept socket %d", acceptSocket);
-
             pthread_mutex_lock(&server->mutex);
             localCloseTask=server->closeTask;
             pthread_mutex_unlock(&server->mutex);
@@ -80,7 +78,6 @@ void* receiveTask(void* param)
             server->disableTcpNagleAlgorithm(acceptSocket);
             inet_ntop(AF_INET,&clAddr.sin_addr, clientIp, sizeof(clientIp));
             server->logger.logInfo("Connection to server from %s", clientIp);
-            server->logger.logInfo("Client Adress = %s", clientIp);
 
             exitLoop=false;
             while(!exitLoop && !localCloseTask)
