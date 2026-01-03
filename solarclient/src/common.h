@@ -13,6 +13,7 @@
 #define MEASUREMENT_INTERVAL            5
 
 #define DAYS_PER_YEAR                   366
+#define HOURS_PER_DAY                   24
 #define MINUTES_PER_DAY                 (24*60)
 #define MINUTES_PER_HOUR                60
 

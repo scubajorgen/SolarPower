@@ -798,7 +798,9 @@ void Scheduler::convertStatistics(int timeIndex)
         if (statistics.numberOfRecordsInSum[counterNo]>INTERVALS_PER_DAY*9/10)
         {
             // calculate the energy in Wh
-            dayRecord.energy[counterNo]         =(double)statistics.pulsePowerSum[counterNo]*INTERVALS_PER_DAY/statistics.numberOfRecordsInSum[counterNo]/DECIWATT_PER_WATT;
+            // E [Wh] = average P [dW]  * HOURS_PER_DAY / DECIWATT_PER_WATT
+            dayRecord.energy[counterNo]         =(double)statistics.pulsePowerSum[counterNo]/statistics.numberOfRecordsInSum[counterNo]*
+                                                 HOURS_PER_DAY/DECIWATT_PER_WATT;
 
             // calculate the max power in W. The index is relative to the start of day
             dayRecord.maxPower[counterNo]       =(double)statistics.maxPower[counterNo]/DECIWATT_PER_WATT;
