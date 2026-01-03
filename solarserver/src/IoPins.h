@@ -5,8 +5,8 @@
 * I/O pin and LED control
 *
 \**************************************************************************************************/
-#ifndef IOPINS
-#define IOPINS
+#ifndef IOPINS_H
+#define IOPINS_H
 
 
 #include "Configuration.h"
@@ -53,6 +53,15 @@
 
 #define MAXPINNAME              10
 
+// 1000 W, 1000 imp/kWh => 83.3 imp/5 min -> 3600 cs per pulse 360 SAMPLE_INTERVAL
+#define TESTCOUNTS_HIGH         10      // 100 ms
+#define TESTCOUNTS_LOW          350     // 3.5 s
+
+typedef enum
+{
+     TESTSTATE_LOW,
+     TESTSTATE_HIGH
+} TestState_t;
 
 typedef struct
 {
@@ -73,13 +82,14 @@ private:
     void initialise();
     static IoPins*      theInstance;
 
-    bool testMode;
-    int  testCount;
-    int  testPulse;
+    bool                 testMode;
+    int                  testCount[MAX_PULSE_COUNTERS];
+    TestState_t          testState[MAX_PULSE_COUNTERS];
 
     IoPins();
     int getPulseInputPin        (int pulseNo);
     int getPulseLedOutputPin    (int pulseNo);
+    int getTestPulseValue       (int pulseNo);
 
 public:
     static IoPins* getInstance  ();

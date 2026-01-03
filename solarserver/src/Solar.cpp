@@ -373,18 +373,7 @@ int main (int argc, char *argv[])
     } 
     else
     {
-#if defined(TESTMODE)
-
-#if defined(PUBLISH_AMQP) 
-        solarPublish=SolarPublishAmqp::getInstance();
-#elif defined (PUBLISH_WEBSOCKETS)
-        solarPublish=SolarPublishWebsocket::getInstance();
-#endif
-
-        solarPublish->testPublish();
-#else
         runAsConsoleApplication();
-#endif
     }
     return 0 ;
 }

@@ -10,6 +10,7 @@
 
 #include "pthread.h"
 
+#include "common.h"
 #include "Log.h"
 #include "SolarPublish.h"
 #include "Configuration.h"
@@ -43,6 +44,8 @@ private:
 
     Configuration*      configuration;
 
+    PulseMeterUsage_t   meterUsage;                         // Indicates whether pulse meter is a production meter (export) or consumption (import) or not used
+
     INT32               maxPower;                           // Maximum power measured during day
     INT32               maxPowerTimeDiff;
     solarTime_t         maxPowerTime;                       // Time of maximum power per day
@@ -54,7 +57,6 @@ private:
     char*               energyMeterFileName;                // File to which meter value is stored
 
     int                 pulseId;                            // ID of the pulse meter; also used as array index; 0, 1, 2...
-    bool                isProduction;                       // Indicates whether pulse meter is a production meter (export) or consumption (import)
 
     countState_t        countState;                         // State machine state
     IoPins*             ioPins;
@@ -86,7 +88,7 @@ private:
     void                    persistEnergyMeter              ();
 
 public:
-                            PulseCounter                    (int pulseId, bool isProduction, char* meterFile);
+                            PulseCounter                    (int pulseId, PulseMeterUsage_t meterUsage, char* meterFile);
 
                             ~PulseCounter                   ();
 
@@ -106,4 +108,5 @@ public:
     INT32                   getCurrentExportPower           () override;
 
     bool                    isProductionMeter               ();
+    PulseMeterUsage_t       getMeterUsage                   ();
 };

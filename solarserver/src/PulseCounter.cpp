@@ -40,56 +40,59 @@
 \******************************************************************************/
 void PulseCounter::process()
 {
-    pulseValue=ioPins->getPulse(pulseId);
-
-    switch (countState)
+    if (meterUsage!=USAGE_NOTUSED)  // If not used, don't waste energy
     {
-    case COUNTSTATE_IDLE:
-        if (pulseValue==false)
-        {
-            countState=COUNTSTATE_LOWSTATE;
-        }
-        break;
+        pulseValue=ioPins->getPulse(pulseId);
 
-    case COUNTSTATE_LOWSTATE:
-        if (pulseValue==true)
+        switch (countState)
         {
-            countState=COUNTSTATE_WAITFORHIGH;
-        }
-        break;
+        case COUNTSTATE_IDLE:
+            if (pulseValue==false)
+            {
+                countState=COUNTSTATE_LOWSTATE;
+            }
+            break;
 
-    case COUNTSTATE_WAITFORHIGH:
-        if (pulseValue==true)
-        {
-            // YES! WE'VE GOT ONE!!!
-            pulseReceived();
-            countState=COUNTSTATE_HIGHSTATE;
-        }
-        else
-        {
-            countState=COUNTSTATE_LOWSTATE;
-            logger.logWarning("To short high (pulse)");
-        }
-        break;
+        case COUNTSTATE_LOWSTATE:
+            if (pulseValue==true)
+            {
+                countState=COUNTSTATE_WAITFORHIGH;
+            }
+            break;
 
-    case COUNTSTATE_HIGHSTATE:
-         if (pulseValue==false)
-         {
-             countState=COUNTSTATE_WAITFORLOW;
-         }
-         break;
+        case COUNTSTATE_WAITFORHIGH:
+            if (pulseValue==true)
+            {
+                // YES! WE'VE GOT ONE!!!
+                pulseReceived();
+                countState=COUNTSTATE_HIGHSTATE;
+            }
+            else
+            {
+                countState=COUNTSTATE_LOWSTATE;
+                logger.logWarning("To short high (pulse)");
+            }
+            break;
 
-    case COUNTSTATE_WAITFORLOW:
-         if (pulseValue==false)
-         {
-             countState=COUNTSTATE_LOWSTATE;
-         }
-         else
-         {
-             countState=COUNTSTATE_HIGHSTATE;
-            logger.logWarning("To short low (^pulse)");
-         }
-         break;
+        case COUNTSTATE_HIGHSTATE:
+            if (pulseValue==false)
+            {
+                countState=COUNTSTATE_WAITFORLOW;
+            }
+            break;
+
+        case COUNTSTATE_WAITFORLOW:
+            if (pulseValue==false)
+            {
+                countState=COUNTSTATE_LOWSTATE;
+            }
+            else
+            {
+                countState=COUNTSTATE_HIGHSTATE;
+                logger.logWarning("To short low (^pulse)");
+            }
+            break;
+        }
     }
 }
 
@@ -314,13 +317,13 @@ int PulseCounter::getCounterValue()
 * The constructor. Initialises the instance
 *
 \******************************************************************************/
-PulseCounter::PulseCounter(int pulseId, bool isProduction, char* meterFile)
+PulseCounter::PulseCounter(int pulseId, PulseMeterUsage_t meterUsage, char* meterFile)
 {
     configuration               = Configuration::getInstance();
 
     // Id of this pulse
     this->pulseId               = pulseId;
-    this->isProduction          = isProduction;
+    this->meterUsage            = meterUsage;
     this->energyMeterFileName   = meterFile;
 
     // Signal no valid power value measured
@@ -380,14 +383,16 @@ INT32 PulseCounter::getPublishPower()
 INT32 PulseCounter::getCurrentImportPower()
 {
     INT32 power=0;
-    if (isProduction)
+    switch (meterUsage)
     {
-        power=0;
-    }
-    else
-    {
-        estimateCurrentPower();
-        power=publishPower;
+        case USAGE_PRODUCTION:
+        case USAGE_NOTUSED:
+            power=0;
+            break;
+        case USAGE_CONSUMPTION:
+            estimateCurrentPower();
+            power=publishPower;
+            break;
     }
     return power;
 }
@@ -401,14 +406,16 @@ INT32 PulseCounter::getCurrentImportPower()
 INT32 PulseCounter::getCurrentExportPower()
 {
     INT32 power=0;
-    if (isProduction)
+    switch (meterUsage)
     {
-        estimateCurrentPower();
-        power=publishPower;
-    }
-    else
-    {
-        power=0;
+        case USAGE_CONSUMPTION:
+        case USAGE_NOTUSED:
+            power=0;
+            break;
+        case USAGE_PRODUCTION:
+            estimateCurrentPower();
+            power=publishPower;
+            break;
     }
     return power;
 }
@@ -528,9 +535,20 @@ void PulseCounter::persistEnergyMeter()
 *
 * This function indicates if the pulse meter measures production (true)
 * or consumption (false)
+* DEPRECATED
 *
 \******************************************************************************/
 bool PulseCounter::isProductionMeter()
 {
-    return isProduction;
+    return (meterUsage==USAGE_PRODUCTION);
+}
+
+/******************************************************************************\
+*
+* This function indicates how the meter is used
+*
+\******************************************************************************/
+PulseMeterUsage_t PulseCounter::getMeterUsage()
+{
+    return meterUsage;
 }

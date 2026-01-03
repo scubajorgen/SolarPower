@@ -71,9 +71,12 @@ IoPins::IoPins()
     // Variables for testmode. Set testMode to true for testmode. 
     // When in testmode, the system simulates incoming pulses. One pulse
     // cycle per 2 seconds (=900 Watt)
-    testMode            =false;
-    testPulse           =0;
-    testCount           =0;
+    testMode                =configuration->getSimulationMode();
+    for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
+    {
+        testState[counterNo]=TESTSTATE_LOW;
+        testCount[counterNo]=TESTCOUNTS_LOW;
+    }
     
     // Initialise the I/O
     this->initialise();
@@ -221,49 +224,17 @@ void IoPins::setLed1(int state)
 \******************************************************************************/
 bool IoPins::getPulse(int pulseNo)
 {
-	bool value;
-	int  ioValue;
-
+    int  ioValue=0;
     if (!testMode)
     {
         // Read pin 
-//        ioValue=gpio->pollPin(getPulseInputPin(pulseNo));
         ioValue=digitalRead(getPulseInputPin(pulseNo));      
     }
     else
     {
-        if (testCount==(1000000/SAMPLE_TIME-2))
-        {
-            testCount=0;
-            if (testPulse==0)
-            {
-                testPulse=1;
-            }
-            else
-            {   
-                testPulse=0;
-            }
-        }
-        else
-        {
-            testCount++;
-        }
-       
-
-        ioValue=testPulse;
-        
-    }    
-    
-    if (ioValue)	// 7th iopin
-    {
-        value=true;
+        ioValue=getTestPulseValue(pulseNo);
     }
-    else
-    {
-        value=false;
-    }
-    
-    return value;
+    return (ioValue>0);
 }
 
 /******************************************************************************\
@@ -281,7 +252,6 @@ void IoPins::setPulseLed(int pulseNo, int state)
 
     if (pin>=0)
     {
-//        gpio->setPin(pin, state);
         if (state)
         {
             digitalWrite(pin, LOW);
@@ -324,4 +294,37 @@ int IoPins::convertPinNameToPin(char* pinName)
         }
     }
     return pin;
+}
+
+
+/******************************************************************************\
+*
+*  Simulate a pulse
+*
+\******************************************************************************/
+int IoPins::getTestPulseValue(int pulseNo)
+{
+    int ioValue=0;
+
+    testCount[pulseNo]--;
+    switch (testState[pulseNo])
+    {
+        case TESTSTATE_LOW:
+            ioValue=0;
+            if (testCount[pulseNo]<=0)
+            {
+                testState[pulseNo]=TESTSTATE_HIGH;
+                testCount[pulseNo]=TESTCOUNTS_HIGH;
+            }
+            break;
+        case TESTSTATE_HIGH:
+            ioValue=1;
+            if (testCount[pulseNo]<=0)
+            {
+                testState[pulseNo]=TESTSTATE_LOW;
+                testCount[pulseNo]=TESTCOUNTS_LOW+(rand()%40)-20; // add some jitter
+            }
+            break;
+    }
+    return ioValue;
 }

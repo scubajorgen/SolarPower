@@ -5,6 +5,8 @@
 * Common defines
 *
 \**************************************************************************************************/
+#ifndef COMMON_H
+#define COMMON_H
 
 // This define defines the interval of measurement in minutes
 // Note: an hour should be dividable by this amount
@@ -45,3 +47,12 @@
 #define LOGFILE         "/var/log/Solar.log"
 #define SERVERPIDFILE   "/tmp/SolarServer.pid"
 #define CLIENTPIDFILE   "/tmp/SolarClient.pid"
+
+typedef enum
+{
+    USAGE_NOTUSED    =0,
+    USAGE_CONSUMPTION=1,
+    USAGE_PRODUCTION =2
+} PulseMeterUsage_t;
+
+#endif

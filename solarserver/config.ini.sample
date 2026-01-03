@@ -9,9 +9,9 @@ logfile                    /var/log/solar.log
 pidfile                    /tmp/SolarServer.pid
 
 # Pulse meter filename
-pulseMeterFile1            ./pulse1.txt
-pulseMeterFile2            ./pulse2.txt
-pulseMeterFile3            ./pulse3.txt
+pulsemeter_file1           ./pulse1.txt
+pulsemeter_file2           ./pulse2.txt
+pulsemeter_file3           ./pulse3.txt
 
 # Server port
 server_port                8002
@@ -30,6 +30,11 @@ pulse3_gpio_input          GPIO17
 pulse1_gpio_output         GPIO9
 pulse2_gpio_output         GPIO10
 pulse3_gpio_output         GPIO11
+
+# Indicates the usage of the meter: 0 - not used, 1 - consumption, 2 - production
+pulse1_usage                2
+pulse2_usage                1
+pulse3_usage                0
 
 # Output pin for the heart beat LED
 heartbeat_gpio_output      GPIO7
@@ -58,3 +63,7 @@ amqp_user                  testuser
 amqp_password              testpassword
 amqp_routingkey            key
 amqp_vhost                 /
+
+# Simulation mode: in simulation mode pulse input and meter input is simulated
+# 0 - production mode, 1 - simulation mode
+simulation_mode            0

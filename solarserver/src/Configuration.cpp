@@ -75,17 +75,17 @@ void Configuration::parseLine(char* line)
         {
             strncpy(logFileName, value, MAXFILENAME-1);
         }
-        else if (strcmp(tag, "pulseMeterFile1")==0)
+        else if (strcmp(tag, "pulsemeter_file1")==0)
         {
-            strncpy(pulseMeterFileName1, value, MAXFILENAME-1);
+            strncpy(pulseMeterFileName[0], value, MAXFILENAME-1);
         }
-        else if (strcmp(tag, "pulseMeterFile2")==0)
+        else if (strcmp(tag, "pulsemeter_file2")==0)
         {
-            strncpy(pulseMeterFileName2, value, MAXFILENAME-1);
+            strncpy(pulseMeterFileName[1], value, MAXFILENAME-1);
         }
-        else if (strcmp(tag, "pulseMeterFile3")==0)
+        else if (strcmp(tag, "pulsemeter_file3")==0)
         {
-            strncpy(pulseMeterFileName3, value, MAXFILENAME-1);
+            strncpy(pulseMeterFileName[2], value, MAXFILENAME-1);
         }
         else if (strcmp(tag, "pulse1_pulsesperkwh")==0)
         {
@@ -99,6 +99,20 @@ void Configuration::parseLine(char* line)
         {
             pulsesPerKwh[2]=atoi(value);
         }
+
+        else if (strcmp(tag, "pulse1_usage")==0)
+        {
+            pulseMeterUsage[0]=(PulseMeterUsage_t)atoi(value);
+        }
+        else if (strcmp(tag, "pulse2_usage")==0)
+        {
+            pulseMeterUsage[1]=(PulseMeterUsage_t)atoi(value);
+        }
+        else if (strcmp(tag, "pulse3_usage")==0)
+        {
+            pulseMeterUsage[2]=(PulseMeterUsage_t)atoi(value);
+        }
+
         else if (strcmp(tag, "pulse1_gpio_input")==0)
         {
             strncpy(gpioPulse[0], value, MAXPINNAME-1);
@@ -182,6 +196,10 @@ void Configuration::parseLine(char* line)
         else if (strcmp(tag, "smartmeter_gas")==0)
         {
             strncpy(gasRegexp, value, MAXREGEXP-1);
+        }
+        else if (strcmp(tag, "simulation_mode")==0)
+        {
+            simulationMode=atoi(value);
         }
 #ifdef PUBLISH_AMQP
         else if (strcmp(tag, "amqp_host")==0)
@@ -628,29 +646,21 @@ char* Configuration::getAmqpVHost()
 \******************************************************************************/
 void Configuration::dumpConfig()
 {
-    int counterNo;
-    
     logger.logInfo("Log filename               %s", logFileName);
     logger.logInfo("PID filename               %s", pidFileName);
     logger.logInfo("Server port                %d", serverPort);
     logger.logInfo("Heartbeat led              %s (%d)", gpioHeartbeatLed, getGpioHeartbeatLed());
     
-    counterNo=0;
-    while (counterNo<MAX_PULSE_COUNTERS)
+    for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
     {
-       logger.logInfo("Counter %d input            %s (%d)", counterNo, 
-                                                                      gpioPulse[counterNo],
-                                                                      getGpioPulse(counterNo));
-        logger.logInfo("Counter %d LED output       %s (%d)", counterNo, 
-                                                                      gpioLed[counterNo],
-                                                                      getGpioLed(counterNo));
-        logger.logInfo("Counter %d pulses per kWh   %d", counterNo, pulsesPerKwh[counterNo]);
-        counterNo++;
+        logger.logInfo("PULSE METER %d"                 , counterNo+1);
+        logger.logInfo("Usage                      %s"      , usageString[pulseMeterUsage[counterNo]]);
+        logger.logInfo("input                      %s (%d)" , gpioPulse[counterNo], getGpioPulse(counterNo));
+        logger.logInfo("LED output                 %s (%d)" , gpioLed[counterNo], getGpioLed(counterNo));
+        logger.logInfo("pulses per kWh             %d"      , pulsesPerKwh[counterNo]);
+        logger.logInfo("Pulse energy filename      %s"      , pulseMeterFileName[counterNo]);
     }
-    
-    logger.logInfo("Pulse energy filename 1    %s", pulseMeterFileName1);
-    logger.logInfo("Pulse energy filename 2    %s", pulseMeterFileName2);
-    logger.logInfo("Pulse energy filename 3    %s", pulseMeterFileName3);
+
     logger.logInfo("Serial port                %s", serialPortDevice);
     logger.logInfo("Serial invert GPIO         %s (%d)", serialGpioInvert, IoPins::convertPinNameToPin(serialGpioInvert));
     logger.logInfo("Serial invert              %d", serialInvert);
@@ -674,6 +684,7 @@ void Configuration::dumpConfig()
     logger.logInfo("AMQP Routing key           %s", amqpRoutingKey);
     logger.logInfo("AMQP VHost                 %s", amqpVHost);
 #endif
+    logger.logInfo("Simulation mode            %d", simulationMode);
 }
 
 /******************************************************************************\
@@ -721,27 +732,27 @@ void Configuration::setPidFileName(char* fileName)
 * Get the filename for the pulse meter file
 *
 \******************************************************************************/
-char* Configuration::getPulseMeterFileName1()
+char* Configuration::getPulseMeterFileName(int counter)
 {
-    return pulseMeterFileName1;
+    return pulseMeterFileName[counter];
 }
 
 /******************************************************************************\
 *
-* Get the filename for the pulse meter file
+* Get the usage of the pulse meter 0 - not used, 1 - consumption, 2 - production
 *
 \******************************************************************************/
-char* Configuration::getPulseMeterFileName2()
+PulseMeterUsage_t Configuration::getPulseMeterUsage(int counter)
 {
-    return pulseMeterFileName2;
+    return pulseMeterUsage[counter];
 }
 
 /******************************************************************************\
 *
-* Get the filename for the pulse meter file
+* Get the simulation mode value 0 - normal operation, 1 - simulation
 *
 \******************************************************************************/
-char* Configuration::getPulseMeterFileName3()
+int Configuration::getSimulationMode()
 {
-    return pulseMeterFileName3;
+    return simulationMode;
 }

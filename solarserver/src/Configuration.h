@@ -25,15 +25,16 @@ class Configuration
 
     Log                     logger {"config"};
     int                     serverPort;
-    int                     pulsesPerKwh[MAX_PULSE_COUNTERS];
-    char                    gpioPulse[MAX_PULSE_COUNTERS][MAXPINNAME];
-    char                    gpioLed[MAX_PULSE_COUNTERS][MAXPINNAME];
     char                    gpioHeartbeatLed[MAXPINNAME];
+
     char                    logFileName[MAXFILENAME];
     char                    pidFileName[MAXFILENAME];
-    char                    pulseMeterFileName1[MAXFILENAME];
-    char                    pulseMeterFileName2[MAXFILENAME];
-    char                    pulseMeterFileName3[MAXFILENAME];
+
+    int                     pulsesPerKwh        [MAX_PULSE_COUNTERS];
+    char                    gpioPulse           [MAX_PULSE_COUNTERS][MAXPINNAME];
+    char                    gpioLed             [MAX_PULSE_COUNTERS][MAXPINNAME];
+    char                    pulseMeterFileName  [MAX_PULSE_COUNTERS][MAXFILENAME];
+    PulseMeterUsage_t       pulseMeterUsage     [MAX_PULSE_COUNTERS];
     
     char                    serialPortDevice[MAXFILENAME];
     char                    serialGpioInvert[MAXPINNAME];
@@ -60,9 +61,14 @@ class Configuration
     char                    amqpVHost[MAXCONFIGSTRING];
 #endif
 
+    int                     simulationMode;
+
+
                             Configuration();
     void                    parseLine(char* line);
-    bool                    readConfigFile();   
+    bool                    readConfigFile();
+
+    const char              usageString[3][12]={"NOT USED", "CONSUMPTION", "PRODUCTION"};
     
 public:
     static  Configuration*  getInstance();    
@@ -71,23 +77,18 @@ public:
 
     void                    setPulsesPerKwh(int counter, int value);
     int                     getPulsesPerKwh(int counter);
-    
     int                     getGpioPulse(int counter);
-//    void                    setGpioPulse(int counter, int value);
     int                     getGpioLed(int counter);
-//    void                    setGpioLed(int counter, int value);
+    char*                   getPulseMeterFileName(int counter);
+
     int                     getGpioHeartbeatLed();
-//    void                    setGpioHeartbeatLed(int value);
+    PulseMeterUsage_t       getPulseMeterUsage(int counter);
     int                     getServerPort();
     void                    setServerPort(int value);
     char*                   getLogFileName();
     void                    setLogFileName(char* fileName);
     char*                   getPidFileName();
     void                    setPidFileName(char* fileName);
-    char*                   getPulseMeterFileName1();
-    char*                   getPulseMeterFileName2();
-    char*                   getPulseMeterFileName3();
-
 
     char*                   getSerialPortDevice();
     int                     getSerialBaudrate();
@@ -112,7 +113,9 @@ public:
     char*                   getAmqpRoutingKey();
     char*                   getAmqpUser();
     char*                   getAmqpPassword();
-    
+
+    int                     getSimulationMode();
+
     void                    dumpConfig();
 };
 #endif

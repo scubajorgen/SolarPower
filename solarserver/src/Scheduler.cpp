@@ -133,9 +133,9 @@ Scheduler::Scheduler()
 
     // create counters
     Configuration* configuration=Configuration::getInstance();
-    counters[0]             =new PulseCounter(PULSE1, true , configuration->getPulseMeterFileName1());    // Solar production
-    counters[1]             =new PulseCounter(PULSE2, false, configuration->getPulseMeterFileName2());    // Solar consumption
-    counters[2]             =new PulseCounter(PULSE3, true , configuration->getPulseMeterFileName3());    // Not used
+    counters[0]             =new PulseCounter(PULSE1, configuration->getPulseMeterUsage(0), configuration->getPulseMeterFileName(0));    // Solar production
+    counters[1]             =new PulseCounter(PULSE2, configuration->getPulseMeterUsage(1), configuration->getPulseMeterFileName(1));    // Solar consumption
+    counters[2]             =new PulseCounter(PULSE3, configuration->getPulseMeterUsage(2), configuration->getPulseMeterFileName(2));    // Not used
 
     // prepare the empty measurement
     
