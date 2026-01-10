@@ -55,7 +55,6 @@ class MeasurementStorage
     Measurement_t                   measurements[MEASUREMENTSTORAGESIZE];
     int                             startOfArray;
     int                             endOfArray;
-    INT32                           startTimeIndex;
     
     MaxPower_t                      maxPowers[MAXPOWERSTORAGESIZE];
     int                             maxPowerStartOfArray;
@@ -71,11 +70,8 @@ class MeasurementStorage
 public:
     static MeasurementStorage*      getInstance                     ();   
                                     ~MeasurementStorage             ();
-                                    
-    void                            setStartTimeIndex               (int startTimeIndex);                                    
     
     int                             getNumberOfMeasurementRecords   ();  
-    void                            getMeasurementInfo              (int* number, INT32* startTimeIndex);
     void                            appendMeasurement               (Measurement_t* measurement);   
     bool                            getMeasurement                  (int number, Measurement_t* measurement);
     bool                            getLastMeasurement              (Measurement_t* measurement);

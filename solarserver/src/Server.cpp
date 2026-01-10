@@ -367,9 +367,7 @@ void Server::sendLastData(int socket)
 \******************************************************************************/
 void Server::sendAllData(int socket)
 {
-    int             number;
-    INT32           timeIndex;
-    measurementStorage->getMeasurementInfo(&number, &timeIndex);
+    int number  =measurementStorage->getNumberOfMeasurementRecords();
     if (number>0)
     {
         for (int i=0; i<number; i++)
@@ -400,10 +398,7 @@ void Server::sendAllData(int socket)
 \******************************************************************************/
 void Server::sendLastTenData(int socket)
 {
-    int             number;
-    INT32           timeIndex;
-
-    measurementStorage->getMeasurementInfo(&number, &timeIndex);
+    int number=measurementStorage->getNumberOfMeasurementRecords();
     if (number>0)
     {
         for (int i=MAX((number-10), 0) ;i<number; i++)

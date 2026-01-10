@@ -7,7 +7,7 @@ The goal of this project is to monitor the PV system (photovoltaic system or sol
 * The **solarclient**  
   This application connects to the solarserver and downloads the measurement data and stores it in a mysql database. From here, it can be presented e.g. by means of a website or application.
 
-Dependencies are towards libsockets and wiringPi.
+Dependencies are towards [libsockets](https://libwebsockets.org/), [wiringPi](https://github.com/WiringPi/WiringPi) and [rabbitmq-c](https://github.com/alanxz/rabbitmq-c).
 
 
 During the project the Raspberry Pi Model 1 B+ was used. This page assumes this device.
@@ -15,7 +15,7 @@ During the project the Raspberry Pi Model 1 B+ was used. This page assumes this 
 # Installation
 ## Preparing the Raspberry Pi and building solarserver
 
-* Install *Rasberry Pi OS (Legacy, 32bit) Lite*, image  to a flash card, e.g. using Raspberry Pi Imager
+* Install *Rasberry Pi OS Lite (32-bit)*, image  to a flash card, e.g. using Raspberry Pi Imager
 * Get the Raspberry Pi up and running.
 * Make sure Serial Port 0 (/dev/ttyAMA0) is not used as terminal. Use **raspi-config**:  
   5 Interfacing Options -> P6 Serial -> 'Would you like a login shell to be accessible over serial?' = no
@@ -29,7 +29,10 @@ During the project the Raspberry Pi Model 1 B+ was used. This page assumes this 
   > <Finish>
   ```
 * Update:  ```sudo apt-get update```
-* Install libwebsockets: ```sudo apt-get install libwebsockets-dev```
+* Install libwebsockets, if you are going to use websockets:  
+  ```
+    sudo apt-get install libwebsockets-dev
+  ```
 * Install wiringPi  
   Get the latest armhf release from the [WiringPi github](https://github.com/WiringPi/WiringPi/releases), at time of writing it was 3.16
   ```
@@ -37,7 +40,18 @@ During the project the Raspberry Pi Model 1 B+ was used. This page assumes this 
   wget https://github.com/WiringPi/WiringPi/releases/download/3.16/wiringpi_3.16_armhf.deb
   sudo dpkg -i wiringpi_3.16_armhf.deb
   ```
-* copy sources of solarserver using samba, scp, or whatever
+* If you are going to use AMQP (e.g. RabbitMQ), download and install [rabbitmq-c](https://github.com/alanxz/rabbitmq-c), latest release (at time of writing 0.15.0)  
+  ```
+    wget https://github.com/alanxz/rabbitmq-c/releases/tag/v0.15.0
+    tar -xzvf rabbitmq-c-0.15.0.tar.gz
+    cd rabbitmq-c-0.15.0/
+    mkdir build
+    cd build
+    cmake ..
+    cmake --build .
+    sudo make install
+  ```
+* Copy sources of solarserver using samba, scp, or whatever
 * Build:  
   ```
   make clean

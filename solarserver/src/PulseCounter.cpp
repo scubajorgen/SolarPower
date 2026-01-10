@@ -70,6 +70,7 @@ void PulseCounter::process()
             else
             {
                 countState=COUNTSTATE_LOWSTATE;
+                ghostPulseCount++;
                 logger.logWarning("To short high (pulse)");
             }
             break;
@@ -89,6 +90,7 @@ void PulseCounter::process()
             else
             {
                 countState=COUNTSTATE_HIGHSTATE;
+                ghostDipCount++;
                 logger.logWarning("To short low (^pulse)");
             }
             break;
@@ -211,6 +213,7 @@ void PulseCounter::pulseReceived()
         firstPulseReceived=true;
     }
     previousPulseTime=pulseTime;
+    pulseCount++;
 }
 
 
@@ -250,27 +253,6 @@ void PulseCounter::estimateCurrentPower()
     else
     {
         publishPower=-1;
-    }
-}
-
-/******************************************************************************\
-*
-* The method publishes the last measured power or the power that would result
-* if at this very moment a pulse would have been received, whichever is lower.
-* The trouble is, if the power suddely drops to a low value (say: zero), pulses
-* cease to occur. When publishing, the last measured power is going to be
-* repeated, which does not make sense. Therefore, we calculate the power
-* if now a pulse is received. If this value is lower, we publish this value.
-* In this way the published value exponentially goes to the low value.
-*
-\******************************************************************************/
-void PulseCounter::publishCounter()
-{
-    // If some publishing instance defined, publish the pulse (only for 1st counter)
-    if ((solarPublish!=NULL) && (power>=0))
-    {
-        estimateCurrentPower();
-        solarPublish->postMessage(pulseTime, pulseId, publishPower);
     }
 }
 
@@ -336,6 +318,10 @@ PulseCounter::PulseCounter(int pulseId, PulseMeterUsage_t meterUsage, char* mete
     // Get the current time
     solarClock->getTime(&previousPulseTime);
 
+    pulseCount                  =0L;
+    ghostPulseCount             =0L;
+    ghostDipCount               =0L;
+
 
     // initialise the counting state machine
     ioPins                      =IoPins::getInstance();
@@ -345,11 +331,14 @@ PulseCounter::PulseCounter(int pulseId, PulseMeterUsage_t meterUsage, char* mete
 
     // first pulse received flag
     firstPulseReceived          =false;
+
+    // Reset the daily power maximum
     resetCurrentPowerMax();
 
-    initialiseEnergyMeter();
+    // Initialise interval max
+    maxIntervalPower            =0;
 
-    solarPublish=SolarPublish::getInstance();
+    initialiseEnergyMeter();
 }
 
 /******************************************************************************\
@@ -493,11 +482,30 @@ void PulseCounter::initialiseEnergyMeter()
 \******************************************************************************/
 void PulseCounter::processEnergyMeter()
 {
-    int pulsesPerKwh=configuration->getPulsesPerKwh(pulseId);
-    energyMeter=energyMeterBase+energyMeterCounts*WATTHOUR_PER_KILOWATTHOUR/pulsesPerKwh;
-    if (pulseTime.minute!=previousPulseTime.minute)
+    int pulsesPerKwh    =configuration->getPulsesPerKwh(pulseId);
+    energyMeter         =energyMeterBase+energyMeterCounts*WATTHOUR_PER_KILOWATTHOUR/pulsesPerKwh;
+    switch (configuration->getPulseMeterPersistInterval())
     {
-        persistEnergyMeter();
+        case PERSISTINTERVAL_MINUTE:
+            if (pulseTime.minute!=previousPulseTime.minute)
+            {
+                persistEnergyMeter();
+            }
+        break;
+        case PERSISTINTERVAL_HOUR:
+            if (pulseTime.hour!=previousPulseTime.hour)
+            {
+                persistEnergyMeter();
+            }
+            break;
+        case PERSISTINTERVAL_DAY:
+            if (pulseTime.day!=previousPulseTime.day)
+            {
+                persistEnergyMeter();
+            }
+            break;
+        default:
+            break;
     }
 }
 
@@ -510,7 +518,7 @@ void PulseCounter::persistEnergyMeter()
 {
     if(energyMeter!=energyMeterBase)
     {
-        logger.logInfo("Storing pulse energy meter value %d Wh to file %s", energyMeter, energyMeterFileName);
+        logger.logInfo("Counter %d: Storing pulse energy meter value %d Wh to file %s", pulseId, energyMeter, energyMeterFileName);
         FILE *fptr;
         // Open file in writing mode
         fptr = fopen(energyMeterFileName, "w");
@@ -551,4 +559,16 @@ bool PulseCounter::isProductionMeter()
 PulseMeterUsage_t PulseCounter::getMeterUsage()
 {
     return meterUsage;
+}
+
+
+/******************************************************************************\
+*
+* This function prints the status
+*
+\******************************************************************************/
+void PulseCounter::logStatus()
+{
+    logger.logReport("Pulse meter %d: Pulses received %ld, ghost pulses %ld, ghost dips %ld", 
+                    pulseId, pulseCount, ghostPulseCount, ghostDipCount);
 }

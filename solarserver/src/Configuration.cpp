@@ -71,6 +71,10 @@ void Configuration::parseLine(char* line)
         {
             strncpy(pidFileName, value, MAXFILENAME-1);
         }
+        else if (strcmp(tag, "sim_meter_file")==0)
+        {
+            strncpy(simMeterFileName, value, MAXFILENAME-1);
+        }
         else if (strcmp(tag, "logfile")==0)
         {
             strncpy(logFileName, value, MAXFILENAME-1);
@@ -200,6 +204,10 @@ void Configuration::parseLine(char* line)
         else if (strcmp(tag, "simulation_mode")==0)
         {
             simulationMode=atoi(value);
+        }
+        else if (strcmp(tag, "pulsemeter_persist_interval")==0)
+        {
+            pulseMeterPersistInterval=(PulseMeterPersistInterval_t)atoi(value);
         }
 #ifdef PUBLISH_AMQP
         else if (strcmp(tag, "amqp_host")==0)
@@ -646,45 +654,47 @@ char* Configuration::getAmqpVHost()
 \******************************************************************************/
 void Configuration::dumpConfig()
 {
-    logger.logInfo("Log filename               %s", logFileName);
-    logger.logInfo("PID filename               %s", pidFileName);
-    logger.logInfo("Server port                %d", serverPort);
-    logger.logInfo("Heartbeat led              %s (%d)", gpioHeartbeatLed, getGpioHeartbeatLed());
+    logger.logInfo("Log filename                %s", logFileName);
+    logger.logInfo("PID filename                %s", pidFileName);
+    logger.logInfo("Server port                 %d", serverPort);
+    logger.logInfo("Heartbeat led               %s (%d)", gpioHeartbeatLed, getGpioHeartbeatLed());
     
     for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
     {
-        logger.logInfo("PULSE METER %d"                 , counterNo+1);
-        logger.logInfo("Usage                      %s"      , usageString[pulseMeterUsage[counterNo]]);
-        logger.logInfo("input                      %s (%d)" , gpioPulse[counterNo], getGpioPulse(counterNo));
-        logger.logInfo("LED output                 %s (%d)" , gpioLed[counterNo], getGpioLed(counterNo));
-        logger.logInfo("pulses per kWh             %d"      , pulsesPerKwh[counterNo]);
-        logger.logInfo("Pulse energy filename      %s"      , pulseMeterFileName[counterNo]);
+        logger.logInfo("PULSE METER %d"                      , counterNo+1);
+        logger.logInfo("Usage                       %s"      , usageString[pulseMeterUsage[counterNo]]);
+        logger.logInfo("input                       %s (%d)" , gpioPulse[counterNo], getGpioPulse(counterNo));
+        logger.logInfo("LED output                  %s (%d)" , gpioLed[counterNo], getGpioLed(counterNo));
+        logger.logInfo("pulses per kWh              %d"      , pulsesPerKwh[counterNo]);
+        logger.logInfo("Pulse energy filename       %s"      , pulseMeterFileName[counterNo]);
     }
 
-    logger.logInfo("Serial port                %s", serialPortDevice);
-    logger.logInfo("Serial invert GPIO         %s (%d)", serialGpioInvert, IoPins::convertPinNameToPin(serialGpioInvert));
-    logger.logInfo("Serial invert              %d", serialInvert);
-    logger.logInfo("Serial baudrate            %d", serialBaudrate);
-    logger.logInfo("Serial bits                %d", serialBits);
-    logger.logInfo("Serial stop bits           %d", serialStopBits);
-    logger.logInfo("Serial parity              %d (-1=odd, 0=no, 1=even)", serialParity);
-    logger.logInfo("Import Low  kWh regexp     %s", importLowKwhRegexp);
-    logger.logInfo("Import High kWh regexp     %s", importHighKwhRegexp);
-    logger.logInfo("Export Low  kWh regexp     %s", exportLowKwhRegexp);
-    logger.logInfo("Export High kWh regexp     %s", exportHighKwhRegexp);
-    logger.logInfo("Import kW regexp           %s", importKwRegexp);
-    logger.logInfo("Export kW regexp           %s", exportKwRegexp);
-    logger.logInfo("Gas regexp                 %s", gasRegexp);
+    logger.logInfo("Serial port                 %s", serialPortDevice);
+    logger.logInfo("Serial invert GPIO          %s (%d)", serialGpioInvert, IoPins::convertPinNameToPin(serialGpioInvert));
+    logger.logInfo("Serial invert               %d", serialInvert);
+    logger.logInfo("Serial baudrate             %d", serialBaudrate);
+    logger.logInfo("Serial bits                 %d", serialBits);
+    logger.logInfo("Serial stop bits            %d", serialStopBits);
+    logger.logInfo("Serial parity               %d (-1=odd, 0=no, 1=even)", serialParity);
+    logger.logInfo("Import Low  kWh regexp      %s", importLowKwhRegexp);
+    logger.logInfo("Import High kWh regexp      %s", importHighKwhRegexp);
+    logger.logInfo("Export Low  kWh regexp      %s", exportLowKwhRegexp);
+    logger.logInfo("Export High kWh regexp      %s", exportHighKwhRegexp);
+    logger.logInfo("Import kW regexp            %s", importKwRegexp);
+    logger.logInfo("Export kW regexp            %s", exportKwRegexp);
+    logger.logInfo("Gas regexp                  %s", gasRegexp);
 #ifdef PUBLISH_AMQP
-    logger.logInfo("AMQP Host                  %s", amqpHost);
-    logger.logInfo("AMQP Port                  %d", amqpPort);
-    logger.logInfo("AMQP Exchange              %s", amqpExchange);
-    logger.logInfo("AMQP User                  %s", amqpUser);
-    logger.logInfo("AMQP Password              %s", amqpPassword);
-    logger.logInfo("AMQP Routing key           %s", amqpRoutingKey);
-    logger.logInfo("AMQP VHost                 %s", amqpVHost);
+    logger.logInfo("AMQP Host                   %s", amqpHost);
+    logger.logInfo("AMQP Port                   %d", amqpPort);
+    logger.logInfo("AMQP Exchange               %s", amqpExchange);
+    logger.logInfo("AMQP User                   %s", amqpUser);
+    logger.logInfo("AMQP Password               %s", amqpPassword);
+    logger.logInfo("AMQP Routing key            %s", amqpRoutingKey);
+    logger.logInfo("AMQP VHost                  %s", amqpVHost);
 #endif
-    logger.logInfo("Simulation mode            %d", simulationMode);
+    logger.logInfo("Simulation mode             %d", simulationMode);
+    logger.logInfo("Sumulation meter file       %s", simMeterFileName);
+    logger.logInfo("Pulsemeter persist interval %d", pulseMeterPersistInterval);
 }
 
 /******************************************************************************\
@@ -755,4 +765,25 @@ PulseMeterUsage_t Configuration::getPulseMeterUsage(int counter)
 int Configuration::getSimulationMode()
 {
     return simulationMode;
+}
+
+/******************************************************************************\
+*
+* Get the simulation smart meter reading file
+*
+\******************************************************************************/
+char* Configuration::getSimMeterFileName()
+{
+    return simMeterFileName;
+}
+
+
+/******************************************************************************\
+*
+* Get the pulse meter persist interval: per minute, per hour, per day
+*
+\******************************************************************************/
+PulseMeterPersistInterval_t Configuration::getPulseMeterPersistInterval()
+{
+    return pulseMeterPersistInterval;
 }

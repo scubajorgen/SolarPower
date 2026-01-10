@@ -12,7 +12,6 @@
 
 #include "common.h"
 #include "Log.h"
-#include "SolarPublish.h"
 #include "Configuration.h"
 #include "Meter.h"
 
@@ -40,8 +39,6 @@ class PulseCounter : Meter
 {
 private:
     Log                 logger {"pulsecount"};
-    SolarPublish*       solarPublish;
-
     Configuration*      configuration;
 
     PulseMeterUsage_t   meterUsage;                         // Indicates whether pulse meter is a production meter (export) or consumption (import) or not used
@@ -79,6 +76,11 @@ private:
     INT32               recordCount;
     INT32               recordsToBeAdded;
 
+    long                pulseCount;
+    long                ghostPulseCount;
+    long                ghostDipCount;
+
+
     INT32                   calculatePower                  ();
     INT32                   calculateAverageIntervalPower   ();
     void                    estimateCurrentPower            ();
@@ -102,11 +104,11 @@ public:
     void                    getCurrentPowerMax              (INT32 *timeDiff, INT32* power, solarTime_t *pulseTime);
     void                    resetCurrentPowerMax            ();
 
-    void                    publishCounter                  ();
     INT32                   getPublishPower                 ();
     INT32                   getCurrentImportPower           () override;
     INT32                   getCurrentExportPower           () override;
 
     bool                    isProductionMeter               ();
     PulseMeterUsage_t       getMeterUsage                   ();
+    void                    logStatus                       ();
 };

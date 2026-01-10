@@ -75,6 +75,13 @@ void* schedulerTask(void* param)
             // execute the measurement statemachine
             scheduler->measureStateMachine();
 
+            // Every second, give processing to the simulation
+            if (scheduler->simulationMode)
+            {
+                scheduler->simulation->process();
+//scheduler->simulation->dumpCurrentPowersAndEnergies();
+            }
+
             // reset tenmillisecond counter
             tenMillisecondPeriodCounter=0;
         }
@@ -118,6 +125,7 @@ Scheduler::Scheduler()
     pthread_mutexattr_t     attr;
 
     solarClock              =Clock::getInstance();
+    solarClock->getTime(&schedulerStartTime);
 
     measurementStorage      =MeasurementStorage::getInstance();
 
@@ -131,14 +139,13 @@ Scheduler::Scheduler()
 
     led1State               =false;
 
-    // create counters
+    // create counters, daily power max is reset as part of this
     Configuration* configuration=Configuration::getInstance();
     counters[0]             =new PulseCounter(PULSE1, configuration->getPulseMeterUsage(0), configuration->getPulseMeterFileName(0));    // Solar production
     counters[1]             =new PulseCounter(PULSE2, configuration->getPulseMeterUsage(1), configuration->getPulseMeterFileName(1));    // Solar consumption
     counters[2]             =new PulseCounter(PULSE3, configuration->getPulseMeterUsage(2), configuration->getPulseMeterFileName(2));    // Not used
 
     // prepare the empty measurement
-    
     for (int i=0; i<MAX_PULSE_COUNTERS; i++)
     {
         emptyMeasurement.pulse[i]           =INVALID_MEASUREMENT;
@@ -157,6 +164,9 @@ Scheduler::Scheduler()
     // initialise the task
     taskRunning             =false;
 
+    simulationMode          =configuration->getSimulationMode();
+    simulation              =Simulation::getInstance();
+
     solarPublish=SolarPublish::getInstance();
 
     // create the mutex
@@ -173,7 +183,7 @@ Scheduler::Scheduler()
 /******************************************************************************\
 *
 * This function processes the meters: it gives processing time to each
-* meter
+* meter. Runs every SAMPLE_TIME microsecomds
 *
 \******************************************************************************/
 void Scheduler::processMeters()
@@ -184,10 +194,9 @@ void Scheduler::processMeters()
     {
         counters[i]->process();
     }
-    pthread_mutex_unlock(&mutex);
-
     // process the smart meter
     smartMeter->process();
+    pthread_mutex_unlock(&mutex);
 }
 
 /******************************************************************************\
@@ -304,8 +313,6 @@ void Scheduler::measureStateMachine()
 
             resetMeasurement();
 
-            // Indicates the startTimeIndex (index of first measurement interval in the array)
-            measurementStorage->setStartTimeIndex(startTimeIndex);
             logger.logInfo("First 5 min boundary encountered. Started measuring...");
             measureState=MEASURESTATE_COLLECTED;
         }
@@ -406,6 +413,10 @@ Scheduler* Scheduler::getInstance()
 \******************************************************************************/
 Scheduler::~Scheduler()
 {
+    if (simulationMode)
+    {
+        delete(simulation);
+    }
     stop();
 }
 
@@ -489,3 +500,23 @@ void Scheduler::resetCurrentPowerMax()
     pthread_mutex_unlock(&mutex);
 }
 
+/******************************************************************************\
+*
+* This function prints the status
+*
+\******************************************************************************/
+void Scheduler::logStatus()
+{
+    pthread_mutex_lock(&mutex);
+    logger.logReport("____________________ STATUS ____________________");
+    logger.logReport("Scheduler started %02d-%02d-%04d %02d:%02d:%02d GMT",
+                    schedulerStartTime.day, schedulerStartTime.month, schedulerStartTime.year+2000, 
+                    schedulerStartTime.hour, schedulerStartTime.minute, schedulerStartTime.second);
+    smartMeter->logStatus();
+    for(int i=0; i<MAX_PULSE_COUNTERS; i++)
+    {
+        counters[i]->logStatus();
+    }
+    logger.logReport("________________________________________________");
+    pthread_mutex_unlock(&mutex);
+}

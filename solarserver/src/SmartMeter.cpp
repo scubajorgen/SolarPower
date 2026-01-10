@@ -20,6 +20,7 @@
 
 SmartMeter* SmartMeter::theInstance=NULL;
 
+
 /******************************************************************************\
 * Friend methods
 \******************************************************************************/
@@ -37,9 +38,6 @@ SmartMeter* SmartMeter::theInstance=NULL;
 \******************************************************************************/
 SmartMeter::SmartMeter()
 {
-    initialize();
-    messageIndex=0;
-
     clock       =Clock::getInstance();
 
     // Get the current time
@@ -51,35 +49,65 @@ SmartMeter::SmartMeter()
     currentReading.electricityImportW       =INVALID_MEASUREMENT;
     currentReading.electricityExportW       =INVALID_MEASUREMENT;
     currentReading.gasImport                =INVALID_MEASUREMENT;
+
+    serialPortResetCounter                  =0;
+    messageIndex                            =0;
+    messageCount                            =0L;
+    parseErrors                             =0;
+    Configuration* conf                     =Configuration::getInstance();
+    simulationMode                          =conf->getSimulationMode();
+    if (simulationMode)
+    {
+        logger.logInfo("Starting Smart Meter in simulation mode");
+        simulation                          =Simulation::getInstance();
+        //readSimFile("./SmartMeterMessage.txt");
+        simMeterMessage                     =simulation->getSmartMeterMessage();
+        simPointer                          =strlen(simMeterMessage);
+        simCounter                          =SIMULATION_INTERVALS;
+        serialPortEnable                    =true;
+    }
+    else
+    {
+        logger.logInfo("Starting Smart Meter with serial port");
+        initializeSerialPort();
+    }
+    initializeRegexp();
 }
 
 /******************************************************************************\
 *
-* Setup the serial port
+* Destructor
 *
 \******************************************************************************/
-void SmartMeter::initialize()
+SmartMeter::~SmartMeter()
 {
-    Configuration* config;
-    struct termios options ;
-    char*          device;
-    int            baudrate;
-    int            invertPin;
-    int            invert;
-    int            bits;
-    int            stopBits;
-    int            parity;
-    char*          regexp;
+    if (!simulationMode)
+    {
+        deinitializeSerialPort();
+    }
+}
 
+/******************************************************************************\
+*
+* Setup the serial port. If it does not succeed, it sets serialPortEnable=false,
+* disabling the processing of the serial port
+*
+\******************************************************************************/
+bool SmartMeter::initializeSerialPort()
+{
+    struct termios  options ;
+
+    serialPortEnable                    =true;
+    bool                        error   =false;
     // Get the configured serial port setting
-    config=Configuration::getInstance();
-    device       =config->getSerialPortDevice();
-    baudrate     =config->getSerialBaudrate();
-    invertPin    =config->getSerialGpioInvert();
-    invert       =config->getSerialInvert();
-    bits         =config->getSerialBits();
-    stopBits     =config->getSerialStopBits();
-    parity       =config->getSerialParity();
+    Configuration* config       =Configuration::getInstance();
+    char* device                =config->getSerialPortDevice();
+    int baudrate                =config->getSerialBaudrate();
+    int invertPin               =config->getSerialGpioInvert();
+    int invert                  =config->getSerialInvert();
+    int bits                    =config->getSerialBits();
+    int stopBits                =config->getSerialStopBits();
+    int parity                  =config->getSerialParity();
 
     // Set signal inversion, if required
     pinMode(invertPin, OUTPUT);
@@ -152,11 +180,27 @@ void SmartMeter::initialize()
         }
         tcsetattr (serial, TCSANOW, &options) ;   // Set new options
         serialFlush(serial);
+        logger.logDebug("Serial port initialized, descriptor %d", serial);
     }
     else
     {
         logger.logError("Unable to open serial port: %s", strerror(errno));
+        serialPortEnable    =false;
+        error               =true;
     }
+    serialPortResetCounter++;
+    return error;
+}
+
+/******************************************************************************\
+*
+* Setup the serial port
+*
+\******************************************************************************/
+void SmartMeter::initializeRegexp()
+{
+    Configuration* config   =Configuration::getInstance();
+    char*          regexp;
 
     regexp=config->getImportLowKwhRegexp();
     compileRegex (&importLowKwh, regexp);
@@ -172,8 +216,6 @@ void SmartMeter::initialize()
     compileRegex (&exportKw, regexp);
     regexp=config->getGasRegexp();
     compileRegex (&gas, regexp);
-
-    logger.logInfo("Serial port initialized, descriptor %d", serial);
 }
 
 /******************************************************************************\
@@ -181,7 +223,7 @@ void SmartMeter::initialize()
 * Clean up the serial port
 *
 \******************************************************************************/
-void SmartMeter::deinitialize()
+void SmartMeter::deinitializeSerialPort()
 {
     serialClose(serial);
 }
@@ -217,51 +259,65 @@ void SmartMeter::getMeterReading(MeterReading_t* reading)
 /******************************************************************************\
 *
 * Receive P1 port messages and convert to meter values
+* In simulation mode, a simulated message will be used
 *
 \******************************************************************************/
 void SmartMeter::process()
 {
-    int  x;
-    int  c;
-
-    while ((x=serialDataAvail(serial))>0)
+    if (serialPortEnable)
     {
-        c=serialGetchar(serial);
-        if (c=='!')
+        int  x=0;
+        while ((x=dataAvailable())>0)
         {
-            message[messageIndex]='\0'; // terminate the string
-            if (skipFirstMessage)
+            int c=getNextChar();
+            if (c=='!')
             {
-                skipFirstMessage=false;
+                message[messageIndex]='\0'; // terminate the string
+                if (skipFirstMessage)
+                {
+                    skipFirstMessage=false;
+                }
+                else
+                {
+                    bool success=processMessage();
+                    if (!firstMessageProcessed && success)
+                    {
+                        logger.logInfo("First message succesfully processed");
+                        firstMessageProcessed=true;
+                    }
+                }
+                messageCount++;
+                messageIndex=0;
             }
             else
             {
-                bool success=processMessage();
-                if (!firstMessageProcessed && success)
-                {
-                    logger.logInfo("First message succesfully processed");
-                    firstMessageProcessed=true;
-                }
+                message[messageIndex]=c;
             }
-            messageIndex=0;
+            // prevent the index getting out of bounds
+            if (messageIndex<MAXP1MESSAGESIZE-1)
+            {
+                messageIndex++;
+            }
+            else
+            {
+                logger.logError("Serial port buffer index out of bounds");
+            }
         }
-        else
+        if (x<0)
         {
-            message[messageIndex]=c;
+            logger.logError("Error on serial port %d: %s", serial, strerror (errno));
+            // Best what we can do is reinitialize
+            if (!simulationMode)
+            {
+                initializeSerialPort();
+                logger.logInfo("Serial port reset; resets: %d", serialPortResetCounter);
+            }
         }
-        // prevent the index getting out of bounds
-        if (messageIndex<MAXP1MESSAGESIZE-1)
+        if (simulationMode && simCounter>0)
         {
-            messageIndex++;
+            simCounter--;
         }
-        else
-        {
-            logger.logError("Serial port buffer index out of bounds");
-        }
-    }
-    if (x<0)
-    {
-        logger.logError("Error on %d: %s", serial, strerror (errno));
+
     }
 }
 
@@ -316,10 +372,16 @@ bool SmartMeter::processMessage()
     {
         success =processMatch(&exportKw, &currentReading.electricityExportW);
     }
-
-    result=matchRegex(&gas, message);
-    currentReading.gasImport=(int)(1000.0*atof(result)+0.5);
-
+    if (success)
+    {
+        result=matchRegex(&gas, message);
+        currentReading.gasImport=(int)(1000.0*atof(result)+0.5);
+    }
+    if (!success)
+    {
+        logger.logError("Error parsing meter message");
+        parseErrors++;
+    }
     //dumpCurrentReading();
     return success;
 }
@@ -474,4 +536,72 @@ void  SmartMeter::retrieveAndRestartMeasurement(Measurement_t *measurement)
 
     startMeasurement(); // start next measurement
 }
+
+
+
+/******************************************************************************\
+*
+* This function returns the number of chars available for reading
+*
+\******************************************************************************/
+int SmartMeter::dataAvailable()
+{
+    int dataAvailable;
+    if (simulationMode)
+    {
+        // If simulation intervall passed and previous message has been read fuly...
+        if (simPointer==strlen(simMeterMessage) && simCounter==0)
+        {
+            // Simulate new Smart Meter message
+            simPointer          =0;
+            simCounter          =SIMULATION_INTERVALS;
+        }
+        dataAvailable=strlen(simMeterMessage)-simPointer;
+    }
+    else
+    {
+        dataAvailable=serialDataAvail(serial);
+    }
+    return dataAvailable;
+}
+
+/******************************************************************************\
+*
+* This function returns next available char
+*
+\******************************************************************************/
+char SmartMeter::getNextChar()
+{
+    char c;
+    if (simulationMode)
+    {
+        if (simPointer<strlen(simMeterMessage))
+        {
+            c=simMeterMessage[simPointer];
+            simPointer++;
+        }
+        else
+        {
+            c=-1;
+        }
+    }
+    else
+    {
+        c=serialGetchar(serial);
+    }
+    return c;
+}
+
+/******************************************************************************\
+*
+* This function prints the status
+*
+\******************************************************************************/
+void SmartMeter::logStatus()
+{
+    logger.logReport("Serial port: messages %ld, port resets %d, parse errors %d, enabled %d, sim %d", 
+                    messageCount, serialPortResetCounter, parseErrors, serialPortEnable, simulationMode);
+}
+
+
 

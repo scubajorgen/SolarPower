@@ -72,10 +72,14 @@ IoPins::IoPins()
     // When in testmode, the system simulates incoming pulses. One pulse
     // cycle per 2 seconds (=900 Watt)
     testMode                =configuration->getSimulationMode();
-    for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
+    if (testMode==1)
     {
-        testState[counterNo]=TESTSTATE_LOW;
-        testCount[counterNo]=TESTCOUNTS_LOW;
+        simulation=Simulation::getInstance();
+        for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
+        {
+            testState[counterNo]=TESTSTATE_LOW;
+            testCount[counterNo]=TESTCOUNTS_LOW;
+        }
     }
     
     // Initialise the I/O
@@ -301,6 +305,10 @@ int IoPins::convertPinNameToPin(char* pinName)
 *
 *  Simulate a pulse
 *
+*         _______________                                   ____
+*  ______|               |_________________________________|
+*          TESTCOUNT_HIGH           TESTCOUNT_LOW
+*
 \******************************************************************************/
 int IoPins::getTestPulseValue(int pulseNo)
 {
@@ -321,8 +329,11 @@ int IoPins::getTestPulseValue(int pulseNo)
             ioValue=1;
             if (testCount[pulseNo]<=0)
             {
-                testState[pulseNo]=TESTSTATE_LOW;
-                testCount[pulseNo]=TESTCOUNTS_LOW+(rand()%40)-20; // add some jitter
+                testState[pulseNo]  =TESTSTATE_LOW;
+                double  power       =simulation->getPulsePower(pulseNo)/WATTHOUR_PER_KILOWATTHOUR;
+                double  time        =SECONDS_PER_HOUR/(configuration->getPulsesPerKwh(pulseNo)*power);
+                int     samples     =(int)(time*MICROSECONS_PER_SECOND/SAMPLE_TIME)-TESTCOUNTS_HIGH;
+                testCount[pulseNo]  =samples+(rand()%40)-20; // add some jitter
             }
             break;
     }

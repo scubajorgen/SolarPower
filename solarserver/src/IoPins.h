@@ -10,6 +10,7 @@
 
 
 #include "Configuration.h"
+#include "Simulation.h"
 #include "Log.h"
 #include "common.h"
 
@@ -75,7 +76,8 @@ class IoPins
 private:
     Log                 logger {"iopins"};
     Configuration*      configuration;
-
+    Simulation*         simulation;
+ 
     static PinConvert_t pinConversion[];
 
 

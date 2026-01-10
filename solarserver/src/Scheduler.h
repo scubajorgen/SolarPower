@@ -10,6 +10,7 @@
 #include "MeasurementStorage.h"
 #include "SmartMeter.h"
 #include "SolarPublish.h"
+#include "Simulation.h"
 
 
 #define TENSECONDS              1000         // number of 10 ms periods in 10 seconds
@@ -48,6 +49,7 @@ private:
 
     Clock*              solarClock;
     solarTime_t         pulseTime;
+    solarTime_t         schedulerStartTime;
 
     INT32               startTimeIndex;
     INT32               previousTimeIndex;
@@ -56,6 +58,8 @@ private:
 
     // helpers measureStateMachine()
     INT32               timeIndex;
+    bool                simulationMode;
+    Simulation*         simulation;
 
 
     MeasurementStorage* measurementStorage;
@@ -90,6 +94,7 @@ public:
 
     void                    getCurrentPowerMax              (MaxPower_t* maxPower);
     void                    resetCurrentPowerMax            ();
+    void                    logStatus                       ();
 
 };
 

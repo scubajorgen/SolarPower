@@ -700,8 +700,8 @@ void Scheduler::requestStoredInstantMaxValues(bool onlyLastData)
                     {
                         for (int i=0; i<MAX_PULSE_COUNTERS; i++)
                         {
-                            maxs.timeDiff[i]    =*(int*)        (sendReceiveBuffer+pointer+1+i*(2*sizeof(INT32)+sizeof(solarTime_t)));;
-                            maxs.power[i]       =*(int*)        (sendReceiveBuffer+pointer+5+i*(2*sizeof(INT32)+sizeof(solarTime_t)));;
+                            maxs.timeDiff[i]    =*(int*)        (sendReceiveBuffer+pointer+1+i*(2*sizeof(INT32)+sizeof(solarTime_t)));
+                            maxs.power[i]       =*(int*)        (sendReceiveBuffer+pointer+5+i*(2*sizeof(INT32)+sizeof(solarTime_t)));
                             maxs.time[i]        =*(solarTime_t*)(sendReceiveBuffer+pointer+9+i*(2*sizeof(INT32)+sizeof(solarTime_t)));
                         }
 

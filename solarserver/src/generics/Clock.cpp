@@ -92,7 +92,18 @@ void Clock::getTime(solarTime_t* solarTime)
     currentTime.minute      =nowGmt->tm_min;
     currentTime.second      =nowGmt->tm_sec;
     currentTime.centisecond =(now.tv_nsec/1e7L);
+    currentTimeEpoch        =now.tv_sec+(double)now.tv_nsec/1.0E9;
     *solarTime=currentTime;
+}
+
+/******************************************************************************\
+*
+* This method retrieves the time obtained by getTime() as epoch seconds
+*
+\******************************************************************************/
+double Clock::getLastTimeAsEpoch()
+{
+    return currentTimeEpoch;
 }
 
 /******************************************************************************\

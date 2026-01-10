@@ -130,6 +130,11 @@ void runAsConsoleApplication()
     while (strcmp(userInput, "quit\n")!=0)
     {
         fgets(userInput, 99, stdin);
+
+        if (strcmp(userInput, "status\n")==0)
+        {
+            scheduler->logStatus();
+        }
     }
     deinitialiseSolar();
 }

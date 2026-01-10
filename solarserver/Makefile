@@ -12,13 +12,9 @@ OBJDIR = ./obj
 PUBLISH = PUBLISH_WEBSOCKETS
 # PUBLISH = PUBLISH_AMQP
 
-# TESTMODE
-#MODE=TESTMODE
-MODE=PRODUCTIONMODE
+VERSION		=6.0
 
-VERSION=1.0
-
-CFLAGS		= -D${MODE} -D${PUBLISH} -I. -I./src -I./src/generics -I /usr/include/mysql -I /usr/include/rabbitmq-c -Wall -g -O2 -c -DOSA_POSIX 
+CFLAGS		= -D${PUBLISH} -I. -I./src -I./src/generics -I /usr/include/mysql -I /usr/include/rabbitmq-c -Wall -g -O2 -c -DOSA_POSIX 
 LDFLAGS		= -Wl,-rpath,/usr/local/lib -lstdc++
 PRELIBS		= -L/usr/lib -L /usr/local/lib -L /usr/lib/mysql  -l pthread  -l rt -lwiringPi -lwiringPiDev 
 
@@ -34,7 +30,6 @@ ifeq (${PUBLISH}, PUBLISH_NONE)
   LIBS = $(PRELIBS)
 endif
 
-
 _SRCOBJ	=	Scheduler.o \
 			Configuration.o \
 			MeasurementStorage.o \
@@ -47,6 +42,7 @@ _SRCOBJ	=	Scheduler.o \
 			Solar.o \
 			Server.o \
 			SolarPublish.o \
+			Simulation.o \
 			Log.o
 
 _SRCOBJAMQP    = SolarPublishAmqp.o

@@ -17,6 +17,9 @@
 #define DAYS_PER_YEAR                   366
 #define MINUTES_PER_DAY                 (24*60)
 #define MINUTES_PER_HOUR                60
+#define SECONDS_PER_HOUR                3600
+#define SECONDS_PER_MINUTE              60
+#define MICROSECONS_PER_SECOND          1000000
 
 #define INTERVALS_PER_DAY               (MINUTES_PER_DAY/MEASUREMENT_INTERVAL)
 #define INTERVALS_PER_HOUR              (MINUTES_PER_HOUR/MEASUREMENT_INTERVAL)
@@ -32,6 +35,7 @@
 #define WATTHOUR_PER_KILOWATTHOUR       1000
 
 #define DECIWATT_PER_WATT               10
+#define WATT_PER_KILOWATT               1000
 
 // Sample time in microseconds. This is the time between two samples of the pulse
 #define SAMPLE_TIME                     10000

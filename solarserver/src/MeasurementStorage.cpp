@@ -2,7 +2,7 @@
 *
 * MeasurementStorage.cpp
 *
-* Storage for measurements
+* Storage for measurements and daily maxima
 *
 \**************************************************************************************************/
 #include <stdlib.h>
@@ -72,19 +72,6 @@ MeasurementStorage* MeasurementStorage::getInstance()
 
 /******************************************************************************\
 *
-*  This method sets the time index of the 1st element in the array
-*  Threadsafe
-*
-\******************************************************************************/
-void MeasurementStorage::setStartTimeIndex(int startTimeIndex)
-{
-    pthread_mutex_lock(&mutex); 
-    this->startTimeIndex=startTimeIndex;
-    pthread_mutex_unlock(&mutex);  
-}
-
-/******************************************************************************\
-*
 *  This method returns the number of records that have been stored
 *  Threadsafe
 *
@@ -101,36 +88,6 @@ int MeasurementStorage::getNumberOfMeasurementRecords()
     }
     pthread_mutex_unlock(&mutex);  
     return number;
-}
-
-/******************************************************************************\
-*
-*  This method return the info about the measurements present in the
-*  array
-*  *number becomes the number of measurements in the array
-*  *startTimeIndex becomes the time index of the 1st record
-*
-\******************************************************************************/
-void MeasurementStorage::getMeasurementInfo(int* number, INT32* startTimeIndex)
-{
-    pthread_mutex_lock(&mutex);  
-
-    *number=endOfArray-startOfArray;
-    if (*number<0)
-    {
-        *number+=MEASUREMENTSTORAGESIZE;
-    }
-    *startTimeIndex =this->startTimeIndex;
-    
-    // ERROR CHECK
-    if (*number>0)
-    {
-        if (measurements[startOfArray].timeIndex!=*startTimeIndex)
-        {
-            logger.logError("TIME INDEX ERROR!");
-        }
-    }
-    pthread_mutex_unlock(&mutex);  
 }
 
 /******************************************************************************\
@@ -178,11 +135,6 @@ void MeasurementStorage::appendMeasurement(Measurement_t* measurement)
     // if the start equals the end position, overwrite the end pos
     if (endOfArray==startOfArray)
     {
-        startTimeIndex++;
-        if (startTimeIndex==MAXYEARTIMEINDEX)
-        {
-            startTimeIndex=0;
-        }
         startOfArray++;
         if (startOfArray>=MEASUREMENTSTORAGESIZE)
         {
@@ -254,6 +206,7 @@ bool MeasurementStorage::getMeasurement(int number, Measurement_t* measurement)
         }
         else
         {
+            logger.logError("Requesting non existing measurement");
         }
     }
     pthread_mutex_unlock(&mutex); 
