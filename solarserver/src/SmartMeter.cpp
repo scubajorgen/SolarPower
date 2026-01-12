@@ -65,6 +65,8 @@ SmartMeter::SmartMeter()
         simPointer                          =strlen(simMeterMessage);
         simCounter                          =SIMULATION_INTERVALS;
         serialPortEnable                    =true;
+        serialPortResetCounter              =1;
+
     }
     else
     {
@@ -100,14 +102,14 @@ bool SmartMeter::initializeSerialPort()
     serialPortEnable                    =true;
     bool                        error   =false;
     // Get the configured serial port setting
-    Configuration* config       =Configuration::getInstance();
-    char* device                =config->getSerialPortDevice();
-    int baudrate                =config->getSerialBaudrate();
-    int invertPin               =config->getSerialGpioInvert();
-    int invert                  =config->getSerialInvert();
-    int bits                    =config->getSerialBits();
-    int stopBits                =config->getSerialStopBits();
-    int parity                  =config->getSerialParity();
+    Configuration* config               =Configuration::getInstance();
+    char* device                        =config->getSerialPortDevice();
+    int baudrate                        =config->getSerialBaudrate();
+    int invertPin                       =config->getSerialGpioInvert();
+    int invert                          =config->getSerialInvert();
+    int bits                            =config->getSerialBits();
+    int stopBits                        =config->getSerialStopBits();
+    int parity                          =config->getSerialParity();
 
     // Set signal inversion, if required
     pinMode(invertPin, OUTPUT);
@@ -280,10 +282,13 @@ void SmartMeter::process()
                 else
                 {
                     bool success=processMessage();
-                    if (!firstMessageProcessed && success)
+                    if (success)
                     {
-                        logger.logInfo("First message succesfully processed");
-                        firstMessageProcessed=true;
+                        if (!firstMessageProcessed)
+                        {
+                            logger.logInfo("First message succesfully processed");
+                            firstMessageProcessed=true;
+                        }
                     }
                 }
                 messageCount++;
@@ -292,32 +297,36 @@ void SmartMeter::process()
             else
             {
                 message[messageIndex]=c;
-            }
-            // prevent the index getting out of bounds
-            if (messageIndex<MAXP1MESSAGESIZE-1)
-            {
-                messageIndex++;
-            }
-            else
-            {
-                logger.logError("Serial port buffer index out of bounds");
+                // prevent the index getting out of bounds
+                if (messageIndex<MAXP1MESSAGESIZE-1)
+                {
+                    messageIndex++;
+                }
+                else
+                {
+                    logger.logError("Serial port buffer index out of bounds");
+                }
             }
         }
         if (x<0)
         {
-            logger.logError("Error on serial port %d: %s", serial, strerror (errno));
             // Best what we can do is reinitialize
             if (!simulationMode)
             {
+                logger.logError("Error on serial port %d: %s", serial, strerror (errno));
                 initializeSerialPort();
                 logger.logInfo("Serial port reset; resets: %d", serialPortResetCounter);
+            }
+            else
+            {
+                serialPortResetCounter++;
+                logger.logError("Error on simulated serial port; simulating reset %d", serialPortResetCounter);
             }
         }
         if (simulationMode && simCounter>0)
         {
             simCounter--;
         }
-
     }
 }
 
@@ -557,6 +566,11 @@ int SmartMeter::dataAvailable()
             simCounter          =SIMULATION_INTERVALS;
         }
         dataAvailable=strlen(simMeterMessage)-simPointer;
+        // Simulate serial port error
+        if (rand()%1000000<10)
+        {
+            dataAvailable=-1;
+        }
     }
     else
     {

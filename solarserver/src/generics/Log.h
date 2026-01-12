@@ -9,7 +9,7 @@
 #define LOG_H
 
 #define MAX_LOGFILENAME_STRING  256
-#define MAX_LOGBUFFER           128
+#define MAX_LOGBUFFER           2048
 #define MAX_LOGMODULENAME       20
 #define MAX_LOGTIME_STRING      25
 
