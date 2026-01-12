@@ -582,9 +582,9 @@ bool DataStore::storeInstanteneousPowerMax(instantMax_t* maxs)
     int power1          =maxs->power[0];
     int power2          =maxs->power[1];
     int power3          =maxs->power[2];
-    sprintf(timeString1, "%2d:%02d:%02d", maxs->time[0].hour, maxs->time[0].minute, maxs->time[0].second);
-    sprintf(timeString2, "%2d:%02d:%02d", maxs->time[1].hour, maxs->time[1].minute, maxs->time[1].second);
-    sprintf(timeString3, "%2d:%02d:%02d", maxs->time[2].hour, maxs->time[2].minute, maxs->time[2].second);
+    sprintf(timeString1, "%02d:%02d:%02d", maxs->time[0].hour, maxs->time[0].minute, maxs->time[0].second);
+    sprintf(timeString2, "%02d:%02d:%02d", maxs->time[1].hour, maxs->time[1].minute, maxs->time[1].second);
+    sprintf(timeString3, "%02d:%02d:%02d", maxs->time[2].hour, maxs->time[2].minute, maxs->time[2].second);
 
     bool error              =false;
     // Take the date from the first max value.
