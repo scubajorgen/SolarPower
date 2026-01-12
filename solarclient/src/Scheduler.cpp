@@ -102,7 +102,7 @@ void* schedulerTask(void* param)
             {
                 //  Request yesterdays' instant max value
                 scheduler->logger.logInfo("Requesting stored instant max values");
-                scheduler->requestStoredInstantMaxValues(true);
+                scheduler->requestStoredInstantMaxValues(false);
                 dayProcessed=true;
             }
         }
