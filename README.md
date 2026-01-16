@@ -9,8 +9,44 @@ The goal of this project is to monitor the PV system (photovoltaic system or sol
 
 Dependencies are towards [libsockets](https://libwebsockets.org/), [wiringPi](https://github.com/WiringPi/WiringPi) and [rabbitmq-c](https://github.com/alanxz/rabbitmq-c).
 
+**Note: do not expect a production style program with a fancy user interface. It is fully command line driven.**
 
-During the project the Raspberry Pi Model 1 B+ was used. This page assumes this device.
+## Architecture
+Next diagram shows the set-up
+
+![](image/architecture.png)
+
+* The Dutch smart meter measures the net consumption and production of the household
+* Up to 3 pulse meters may be used to measure individual production or consumption, e.g. gross production of the solar panels  
+  A pulse meter can be configured to measure production or to measure consumption
+* The SolarServer reads out pulse meters and Dutch smart meter every 5 minutes and stores the data in a storage in memory
+* The SolarClient reads out the stored information and stores it in a MySQL database; it initiates the connection for this
+
+The philosophy at the time of creation (2007) was that the SolarServer is always running. The server running SolarClient however may be off-line sometimes for prolonged periods(e.g. during vacations).
+Of course at current state of technology this is not the most logical choice: it would make more sense to have SolarServer upload the measuremement data to a central storage (on premise or in the cloud).
+
+The stored data can be used to feed apps or web pages. For now these are out of scope for this project.
+
+## History
+The project was started by me in 2007, when I installed a PV system (1440 Wpp) and wanted to measure the production. The first version of solarserver ran on a [Beck DK40 IPC@Chip](https://isa.umh.es/micros/doc/sc12/DK40-Manual_engV2_020502.pdf), which is a single chip PC.
+
+![](image/meterkast.jpg)
+
+In 2013 the software was adapted for Raspberry PI.
+By that time the NTA8130 Dutch Smart Meter was introduced. Software has been adapted since.
+
+In 2026 the software was updated thoroughly (version 6.0) and put onto [github](https://github.com/scubajorgen/SolarPower) and again made operational for our home with 5500 Wpp solar PV intallation. Current project can be found on [https://energy.studioblueplanet.net](https://energy.studioblueplanet.net).
+
+
+## Prequisites
+During the project the Raspberry Pi Model 1 B+ was used. This page assumes this device. Prerequisite is some kind of interfacing between 
+* the Raspberry Serial port and the P1 port
+* the Raspberry I/O pins and the pulse meter pulse output
+
+Pulse meters should have a pulse width of at least 100 ms. Sample frequency used by the software is 10 milliseconds. Pulse meters should ideally measure energy only in one way. Most pulse meters (like the popular Eastron SMD72D) measure in both directions and generate a pulse for consumption and production. 
+A pulse meter that generates pulses for only one direction is for example the ABB B23. The cheapest version (B23 112–10E) has one pulse output that can be programmed and it generates pulses only in one direction.
+The reason to have unidirectional pulses is that the software calculates gross energy usage (which is net energy usage plus production). PV systems generally have some energy consumption at night time. Having a meter that also generates pulses for consumption disturbsn the gross energy usage calculation.
+
 
 # Installation
 ## Preparing the Raspberry Pi and building solarserver
@@ -112,9 +148,12 @@ Run the software on a Linux machine or server; it might even work under Windows 
   ./SolarClient
   ```
 
+## Simulation mode
+When setting ```simulation_mode 1``` in the config.ini file of solarserver, it simulates pulse meters and a Dutch smart meter providing a P1 datagram every 5 minutes. Pulse meter 0 simulates a PV system generating a maximum power of 5000 Watt. The Dutch Smart meter plays some energy usage pattern.
+The simulated data is presented in an [excel file](doc/simulation.xlsx).
 
-# SERIAL PORT TEST
-
+# Testing
+## SERIAL PORT TEST
 sudo apt-get install python-serial
 
 python p1.py
@@ -124,3 +163,26 @@ Note that some meters have inverted signals.
 # CONFIGURATION
 Configuration is in config.ini. All values must be set and must
 be valid!
+
+# License
+This software is published under the MIT license:
+
+*Copyright (c) 2026 Jörgen*
+
+*Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:*
+
+*The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.*
+
+*THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.*
