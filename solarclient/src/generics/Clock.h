@@ -31,13 +31,14 @@
 
 typedef struct
 {
-    INT8 year;
-    INT8 month;
-    INT8 day;
-    INT8 hour;
-    INT8 minute;
-    INT8 second;
-    INT8 centisecond;
+    INT16       year;
+    INT8        month;
+    INT8        day;
+    INT8        hour;
+    INT8        minute;
+    INT8        second;
+    INT8        centisecond;
+    FLOAT64     epoch;
 } solarTime_t;
 
 class Clock
@@ -50,7 +51,6 @@ private:
     static INT16    monthDays[12];
 
     solarTime_t     currentTime;
-
 
                     Clock                       ();
 
@@ -65,15 +65,15 @@ public:
     void            getTimeString               (char* timeString);
 
     static INT32    calculateYearTimeIndex      (solarTime_t* solarTime);
-
+    
     // Solar Client functions
-    static  tm*     getTime                ();
-
-    static  int     calculateYearTimeIndex (int day, int month, int hour, int minute);
-    static  int     calculateYearTimeIndex (int day, int month);
-
-    static  void    calculateTime          (int timeIndex, int* day, int* month, int* hour, int* minute);
-
-    static  int     substractDay           (int timeIndex);
+    static  tm*     getTime                     ();
+    
+    static  int     calculateYearTimeIndex      (int day, int month, int hour, int minute);
+    static  int     calculateYearTimeIndex      (int day, int month);
+    
+    static  void    calculateTime               (int timeIndex, int* day, int* month, int* hour, int* minute);
+    
+    static  int     substractDay                (int timeIndex);
 };
 #endif

@@ -20,6 +20,7 @@ _SRCOBJ		= 	SolarClient.o \
 				Configuration.o \
 				Scheduler.o \
 				Toolbox.o \
+				Client.o \
 				Connection.o \
 				Clock.o \
 				Log.o \

@@ -1,3 +1,13 @@
+/**************************************************************************************************\
+*
+* Datastore.h
+*
+* All about storing persistently the data and processing where required
+*
+\**************************************************************************************************/
+#ifndef DATASTORE_H
+#define DATASTORE_H
+
 #include <mysql.h>
 #include <time.h>
 
@@ -118,10 +128,8 @@ public:
     bool                        storeInstanteneousPowerMax  (instantMax_t* maxs);
 
     bool                        openDatabase                ();
-    void                        closeDatabase               ();   
-    void                        getDatabaseVersion          ();                      
-
-
+    void                        closeDatabase               ();
+    void                        getDatabaseVersion          ();
 };
 
-
+#endif

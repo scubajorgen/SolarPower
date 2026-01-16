@@ -32,9 +32,11 @@ MeasurementStorage::MeasurementStorage()
     
     // initialise measurement array
     startOfArray            =0;
+    startOfArrayNext        =0;
     endOfArray              =0;
 
     maxPowerStartOfArray    =0;
+    maxPowerStartOfArrayNext=0;
     maxPowerEndOfArray      =0; 
     
     // create the mutex
@@ -141,6 +143,14 @@ void MeasurementStorage::appendMeasurement(Measurement_t* measurement)
             startOfArray=0;
         }
     }
+    if (endOfArray==startOfArrayNext)
+    {
+        startOfArrayNext++;
+        if (startOfArrayNext>=MEASUREMENTSTORAGESIZE)
+        {
+            startOfArrayNext=0;
+        }
+    }
 
     pthread_mutex_unlock(&mutex);  
 
@@ -152,79 +162,67 @@ void MeasurementStorage::appendMeasurement(Measurement_t* measurement)
                        measurement->pulse[0],measurement->pulsePower[0]/10, measurement->pulseMaxPower[0],measurement->pulseMeter[0],
                        measurement->pulse[1],measurement->pulsePower[1]/10, measurement->pulseMaxPower[1],measurement->pulseMeter[1],
                        measurement->pulse[2],measurement->pulsePower[2]/10, measurement->pulseMaxPower[2],measurement->pulseMeter[2]);
-    logger.logInfo("              Eimp low %d, Eimp normal %d, Eexp low %d, Eexp normal %d, Gas %d",
+    logger.logInfo("              Eimp low %d Wh, Eimp normal %d Wh, Eexp low %d Wh, Eexp normal %d Wh, Gas %d l",
                        measurement->electricityImportLow, measurement->electricityImportNormal,
                        measurement->electricityExportLow, measurement->electricityExportNormal,
                        measurement->gasImport);
     logger.logInfo("              Gross power %d W, net power %d W",
                        measurement->grossPower/10, measurement->netPower/10);
-                    }
+}
+
 
 /******************************************************************************\
 *
-*  This method returns a specific measurement. Number indicates
-*  the nth measurement with respect to the startOfArray. If it is negative
-*  the last stored measurement is returned.
+*  Reset the next measurement pointer to the oldest measurement
 *
 \******************************************************************************/
-bool MeasurementStorage::getMeasurement(int number, Measurement_t* measurement)
+bool MeasurementStorage::resetMeasurementNext()
 {
-    int     index;
-    bool    error;
-    int     recordsInStore;
-    
-    error=true;
+    pthread_mutex_lock(&mutex);  
+    startOfArrayNext=startOfArray;
+    pthread_mutex_unlock(&mutex);  
+    return false;
+}
 
-    pthread_mutex_lock(&mutex); 
-    
-    // i.s.o. calling getNumberOfMeasurementRecords, just calculate the number
-    // saves an expensive mutex lock
-    recordsInStore=endOfArray-startOfArray;
-    if (recordsInStore<0)
+/******************************************************************************\
+*
+*  Purge the retrieved measurements. Simply by setting the start of the
+*  array to the first non retrieved element
+*
+\******************************************************************************/
+bool MeasurementStorage::purgeRetrievedMeasurements()
+{
+    pthread_mutex_lock(&mutex);  
+    startOfArray    =startOfArrayNext;
+    pthread_mutex_unlock(&mutex);  
+    return false;
+}
+
+/******************************************************************************\
+*
+*  This method removes and returns oldest measurement in the buffer
+*
+\******************************************************************************/
+bool MeasurementStorage::getNextMeasurement(Measurement_t* measurement)
+{
+    bool error=false;
+    if (startOfArrayNext!=endOfArray)
     {
-        recordsInStore+=MEASUREMENTSTORAGESIZE;
+        pthread_mutex_lock(&mutex); 
+        *measurement=measurements[startOfArrayNext];
+        startOfArrayNext++;
+        if (startOfArrayNext>=MEASUREMENTSTORAGESIZE)
+        {
+            startOfArrayNext-=MEASUREMENTSTORAGESIZE;
+        }
+        pthread_mutex_unlock(&mutex); 
     }
-
-    if (recordsInStore>0)
+    else
     {
-        // If number<0, just return the last measurement
-        if (number<0)
-        {
-            number=recordsInStore-1;
-        }
-        
-        if (number<recordsInStore)
-        {
-    
-            index=startOfArray+number;
-            if (index>=MEASUREMENTSTORAGESIZE)
-            {
-                index-=MEASUREMENTSTORAGESIZE;
-            }
-            *measurement=measurements[index];
-            error=false;
-        }
-        else
-        {
-            logger.logError("Requesting non existing measurement");
-        }
+        error=true;
     }
-    pthread_mutex_unlock(&mutex); 
-
     return error;
 }
-
-/******************************************************************************\
-*
-*  This method returns the last measured value
-*
-\******************************************************************************/
-bool MeasurementStorage::getLastMeasurement(Measurement_t* measurement)
-{
-    return getMeasurement(-1, measurement);
-}
-
-
 
 /******************************************************************************\
 *
@@ -254,65 +252,80 @@ void MeasurementStorage::appendMaxPower(MaxPower_t* maxPower)
             maxPowerStartOfArray=0;
         }
     }
+    if (maxPowerEndOfArray==maxPowerStartOfArrayNext)
+    {
+        maxPowerStartOfArrayNext++;
+        if (maxPowerStartOfArrayNext>=MAXPOWERSTORAGESIZE)
+        {
+            maxPowerStartOfArrayNext=0;
+        }
+    }
     pthread_mutex_unlock(&mutex); 
 }
 
+
 /******************************************************************************\
 *
-*  This method returns the last max power values
+*  Reset the next measurement pointer to the oldest measurement
 *
 \******************************************************************************/
-bool MeasurementStorage::getPowerMaxValue(int number, MaxPower_t* maxPower)
+bool MeasurementStorage::resetPowerMaxNext()
 {
-    int     index;
-    bool    error;
-    int     recordsInStore;
-    
-    error=true;
+    pthread_mutex_lock(&mutex);  
+    maxPowerStartOfArrayNext    =maxPowerStartOfArray;
+    pthread_mutex_unlock(&mutex);  
+    return false;
+}
 
-    pthread_mutex_lock(&mutex); 
-    
-    // i.s.o. calling getNumberOfMeasurementRecords, just calculate the number
-    // saves an expensive mutex lock
-    recordsInStore=maxPowerEndOfArray-maxPowerStartOfArray;
-    if (recordsInStore<0)
+
+/******************************************************************************\
+*
+*  This method removes and returns oldest max power from the buffer
+*
+\******************************************************************************/
+bool MeasurementStorage::purgeRetrievedPowerMaxValues()
+{
+    pthread_mutex_lock(&mutex);  
+    maxPowerStartOfArray        =maxPowerStartOfArrayNext;
+    pthread_mutex_unlock(&mutex);  
+    return false;
+}
+
+
+/******************************************************************************\
+*
+*  This method removes and returns oldest max power from the buffer
+*
+\******************************************************************************/
+bool MeasurementStorage::getNextPowerMaxValue(MaxPower_t* maxPower)
+{
+    bool error=false;
+    if (maxPowerStartOfArrayNext!=maxPowerEndOfArray)
     {
-        recordsInStore+=MAXPOWERSTORAGESIZE;
+        pthread_mutex_lock(&mutex); 
+        *maxPower=maxPowers[maxPowerStartOfArrayNext];
+        maxPowerStartOfArrayNext++;
+        if (maxPowerStartOfArrayNext>=MAXPOWERSTORAGESIZE)
+        {
+            maxPowerStartOfArrayNext-=MAXPOWERSTORAGESIZE;
+        }
+        pthread_mutex_unlock(&mutex); 
     }
-
-    if (recordsInStore>0)
+    else
     {
-        if (number<0)
-        {
-            number=recordsInStore-1;
-        }
-        if (number<recordsInStore)
-        {
-            index=maxPowerStartOfArray+number;
-            if (index>=MAXPOWERSTORAGESIZE)
-            {
-                index-=MAXPOWERSTORAGESIZE;
-            }
-            *maxPower=maxPowers[index];
-            error=false;    
-        }
-        else
-        {
-
-        }
+        error=true;
     }
-    pthread_mutex_unlock(&mutex);
-     
     return error;
 }
 
 /******************************************************************************\
 *
-*  This method returns the last measured value
+*  This method prints the status of the storage
 *
 \******************************************************************************/
-bool MeasurementStorage::getLastPowerMaxValue(MaxPower_t* maxPower)
+void MeasurementStorage::logStatus()
 {
-    return getPowerMaxValue(-1, maxPower);
+    logger.logReport("Storage usage: Measurements - %d/%d, Daily max %d/%d", 
+                    getNumberOfMeasurementRecords(), MEASUREMENTSTORAGESIZE,
+                    getNumberOfMaxPowerRecords(), MAXPOWERSTORAGESIZE);
 }
-

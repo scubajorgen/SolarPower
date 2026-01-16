@@ -191,7 +191,7 @@ void PulseCounter::pulseReceived()
             }
             energyMeterCounts++;
             processEnergyMeter();
-            logger.logInfo("Counter %d - Pulse: dT=%d cs P=%d W max: dT=%d cs P=%d W interval max: %d W",
+            logger.logDebug("Counter %d - Pulse: dT=%5d cs P=%4d W Instant max: dT=%5d cs P=%4d W Interval max: %5d W",
                                  pulseId, timeDiff, power, maxPowerTimeDiff, maxPower, maxIntervalPower);
         }
         else

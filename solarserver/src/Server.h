@@ -34,24 +34,30 @@
 
 typedef enum
 {
-    COMMAND_NOCOMMAND           =0,
-    COMMAND_ACK                 =1,
-    COMMAND_ADJUSTTIME          =2,
-    COMMAND_SENDALLDATA         =3,
-    COMMAND_SENDLASTDATA        =4,
-    COMMAND_RECEIVEDATA         =5,
-    COMMAND_ENDOFDATA           =6,
-    COMMAND_SENDINSTANTMAX      =7,
-    COMMAND_RECEIVEINSTANTMAX   =8,
-    COMMAND_RESETINSTANTMAX     =9,
-    COMMAND_SENDALLSTOREDMAXS   =10,
-    COMMAND_SENDLASTSTOREDMAX   =11,
-    COMMAND_SENDLASTTENDATA     =12,
-    COMMAND_GETTIME             =13,
-    COMMAND_RECEIVETIME         =14,
-    COMMAND_CALIBRATEPULSE      =15,
-    COMMAND_GETBUFFERINFO       =16,
-    COMMAND_RECEIVEBUFFERINFO   =17
+    COMMAND_NOCOMMAND               =0,
+    COMMAND_ACK                     =1,
+    COMMAND_ADJUSTTIME              =2,
+    COMMAND_SENDALLDATA             =3, // obsolete
+    COMMAND_SENDLASTDATA            =4, // obsolete
+    COMMAND_RECEIVEDATA             =5,
+    COMMAND_ENDOFDATA               =6,
+    COMMAND_SENDINSTANTMAX          =7,
+    COMMAND_RECEIVEINSTANTMAX       =8,
+    COMMAND_RESETINSTANTMAX         =9,
+    COMMAND_SENDALLSTOREDMAXS       =10, // obsolete
+    COMMAND_SENDLASTSTOREDMAX       =11, // obsolete
+    COMMAND_SENDLASTTENDATA         =12, // obsolete
+    COMMAND_GETTIME                 =13,
+    COMMAND_RECEIVETIME             =14,
+    COMMAND_CALIBRATEPULSE          =15,
+    COMMAND_GETBUFFERINFO           =16,
+    COMMAND_RECEIVEBUFFERINFO       =17,
+    COMMAND_TRANSFERMEASUREMENTS    =18,
+    COMMAND_TRANSFERPOWERMAXS       =19,
+    COMMAND_ACKMEASUREMENTTRANSFER  =20,
+    COMMAND_ACKPOWERMAXTRANSFER     =21,
+    COMMAND_SENDSTORAGEINFO         =22,
+    COMMAND_RECEIVESTORAGEINFO      =23
 } command_t;
 
 
@@ -95,30 +101,28 @@ private:
     void                disableTcpNagleAlgorithm    (int sd);
     void                processCommand              (int socket, char* data, int blockSize);
 
+
+
+    // Helpers
+    void                sendMeasurement             (int socket, Measurement_t measurement);
+    void                sendInstantMaxPower         (int socket, MaxPower_t    maxPower);
+
+    // Responders
     void                calibratePulseCounters      (int socket, char* data, int dataLength);
     void                synchroniseTime             (int socket, char* timeData, int dataLength);
     void                sendTime                    (int socket);
-    void                sendAllData                 (int socket);
-    void                sendLastData                (int socket);
-    void                sendLastTenData             (int socket);
     void                sendInstantMax              (int socket);
     void                resetInstantMax             (int socket);
-    void                sendAllStoredInstantMaxs    (int socket);
-    void                sendLastStoredInstantMax    (int socket);
-    void                sendMeasurement             (int socket, Measurement_t measurement);
+    void                transferMeasurements        (int socket);
+    void                transferPowerMaxs           (int socket);
+    void                ackMeasurementTransfer      (int socket);
+    void                ackPowerMaxsTransfer        (int socket);
+    void                sendStorageSizes            (int socket);
 
 public:
     static Server*      getInstance                 ();
     void                startServer                 ();
     void                stopServer                  ();
-
-
-
     friend void*        receiveTask                 (void* param);
-
-
-
 };
-
-
 #endif

@@ -80,11 +80,11 @@ void Clock::getTime(solarTime_t* solarTime)
 {
     struct timespec now;
     struct tm *     nowGmt;
-
+    
     clock_gettime(CLOCK_REALTIME, &now);
-
+    
     nowGmt                  = gmtime(&(now.tv_sec));
-
+    
     currentTime.year        =nowGmt->tm_year%100;
     currentTime.month       =nowGmt->tm_mon+1;             // tm_mon [0..11], currentTime.month [1..12]
     currentTime.day         =nowGmt->tm_mday;
@@ -92,6 +92,7 @@ void Clock::getTime(solarTime_t* solarTime)
     currentTime.minute      =nowGmt->tm_min;
     currentTime.second      =nowGmt->tm_sec;
     currentTime.centisecond =(now.tv_nsec/1e7L);
+    currentTime.epoch       =now.tv_sec+(double)now.tv_nsec/1.0E9;
     *solarTime=currentTime;
 }
 
@@ -154,12 +155,12 @@ void Clock::getTimeString(char* timeString)
 tm* Clock::getTime()
 {
     time_t timer=time(NULL);
-
+    
     // get the greenwich mean time (GMT)
     struct tm* daytime=gmtime(&timer);
 
     return daytime;
-}
+}  
 
 /******************************************************************************\
 *
@@ -208,7 +209,7 @@ void Clock::calculateTime(int timeIndex, int* day, int* month, int* hour, int* m
 {
     int days                =timeIndex/INTERVALS_PER_DAY;
     int remainingIntervals  =timeIndex%INTERVALS_PER_DAY;
-
+    
     *month                  =1;
     int monthIndex          =0;
     bool exit                   =false;
@@ -226,7 +227,7 @@ void Clock::calculateTime(int timeIndex, int* day, int* month, int* hour, int* m
         monthIndex++;
     }
     *day=days+1;
-
+    
     *hour  =remainingIntervals/INTERVALS_PER_HOUR;
     *minute=MEASUREMENT_INTERVAL*(remainingIntervals%INTERVALS_PER_HOUR);
 }

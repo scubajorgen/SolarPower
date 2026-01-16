@@ -15,8 +15,11 @@
 #define MEASUREMENT_INTERVAL            5
 
 #define DAYS_PER_YEAR                   366
+#define HOURS_PER_DAY                   24
 #define MINUTES_PER_DAY                 (24*60)
+#define QUARTERS_PER_DAY                96
 #define MINUTES_PER_HOUR                60
+#define SECONDS_PER_DAY                 (24*3600)
 #define SECONDS_PER_HOUR                3600
 #define SECONDS_PER_MINUTE              60
 #define MICROSECONS_PER_SECOND          1000000
@@ -36,16 +39,20 @@
 
 #define DECIWATT_PER_WATT               10
 #define WATT_PER_KILOWATT               1000
+#define LITER_PER_M3                    1000
 
 // Sample time in microseconds. This is the time between two samples of the pulse
 #define SAMPLE_TIME                     10000
 
 #define MAX_PULSE_COUNTERS              3
 
-#define INT8  char
-#define INT16 short
-#define INT32 int
-#define INT64 long
+#define INT8        char
+#define INT16       short
+#define INT32       int
+#define INT64       long
+#define FLOAT32     float
+#define FLOAT64     double
+#define FLOAT128    long double
 
 #define RUNDIR          "/tmp/"
 #define LOGFILE         "/var/log/Solar.log"

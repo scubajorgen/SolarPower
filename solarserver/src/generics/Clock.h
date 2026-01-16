@@ -31,13 +31,14 @@
 
 typedef struct
 {
-    INT8    year;
-    INT8    month;
-    INT8    day;
-    INT8    hour;
-    INT8    minute;
-    INT8    second;
-    INT8    centisecond;
+    INT16       year;
+    INT8        month;
+    INT8        day;
+    INT8        hour;
+    INT8        minute;
+    INT8        second;
+    INT8        centisecond;
+    FLOAT64     epoch;
 } solarTime_t;
 
 class Clock
@@ -50,8 +51,6 @@ private:
     static INT16    monthDays[12];
 
     solarTime_t     currentTime;
-    double          currentTimeEpoch;
-
 
                     Clock                       ();
 
@@ -62,7 +61,6 @@ public:
     // Solar Server functions
     void            setTime                     (solarTime_t* newSolarTime);
     void            getTime                     (solarTime_t* solarTime);
-    double          getLastTimeAsEpoch          ();
 
     void            getTimeString               (char* timeString);
 

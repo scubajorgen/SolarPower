@@ -13,35 +13,107 @@
 #include "Configuration.h"
 #include "Simulation.h"
 
-
 Simulation* Simulation::theInstance=NULL;
 
-Sim_t Simulation::powers[24]=
+// Simulated powers, per quarter of an hour
+Sim_t Simulation::powers[QUARTERS_PER_DAY]=
 {
-    { 0,  0,  0, { 100,  100,  100},  150, 0},
-    { 1,  0,  0, { 200,  100,  100},  150, 0},
-    { 2,  0,  0, { 300,  100,  100},  150, 0},
-    { 3,  0,  0, { 400,  100,  100},  150, 0},
-    { 4,  0,  0, { 500,  100,  100},  150, 0},
-    { 5,  0,  0, { 600,  100,  100},  150, 0},
-    { 6,  0,  0, { 700,  100,  100},  250, 0},
-    { 7,  0,  0, { 800,  100,  100},  350, 0},
-    { 8,  0,  0, { 900,  100,  100},  450, 0},
-    { 9,  0,  0, {1000,  100,  100},  550, 0},
-    {10,  0,  0, {1100,  100,  100},  450, 0},
-    {11,  0,  0, {1200,  100,  100},  350, 0},
-    {12,  0,  0, {1300,  100,  100},  350, 0},
-    {13,  0,  0, {1200,  100,  100},  350, 0},
-    {14,  0,  0, {1100,  100,  100},  350, 0},
-    {15,  0,  0, {1000,  100,  100},  450, 0},
-    {16,  0,  0, { 900,  100,  100},  550, 0},
-    {17,  0,  0, { 800,  100,  100}, 1050, 0},
-    {18,  0,  0, { 700,  100,  100}, 1150, 0},
-    {19,  0,  0, { 800,  100,  100},  550, 0},
-    {20,  0,  0, { 900,  100,  100},  450, 0},
-    {21,  0,  0, { 000,  100,  100},  450, 0},
-    {22,  0,  0, { 300,  100,  100},  450, 0},
-    {23,  0,  0, { 200,  100,  100},  250, 0}
+    {0, 0, 0, {0, 100, 200}, 600, 500},
+    {0, 15, 0, {0, 100, 200}, 600, 500},
+    {0, 30, 0, {0, 100, 200}, 700, 500},
+    {0, 45, 0, {0, 100, 200}, 700, 500},
+    {1, 0, 0, {0, 100, 200}, 600, 500},
+    {1, 15, 0, {0, 100, 200}, 600, 500},
+    {1, 30, 0, {0, 100, 200}, 700, 500},
+    {1, 45, 0, {0, 100, 200}, 700, 500},
+    {2, 0, 0, {0, 100, 200}, 600, 500},
+    {2, 15, 0, {0, 100, 200}, 600, 500},
+    {2, 30, 0, {0, 100, 200}, 700, 500},
+    {2, 45, 0, {0, 100, 200}, 700, 500},
+    {3, 0, 0, {0, 100, 200}, 600, 500},
+    {3, 15, 0, {0, 100, 200}, 600, 500},
+    {3, 30, 0, {0, 100, 200}, 700, 500},
+    {3, 45, 0, {0, 100, 200}, 700, 500},
+    {4, 0, 0, {0, 100, 200}, 600, 500},
+    {4, 15, 0, {0, 100, 200}, 600, 500},
+    {4, 30, 0, {0, 100, 200}, 700, 500},
+    {4, 45, 0, {0, 100, 200}, 700, 500},
+    {5, 0, 0, {0, 100, 200}, 600, 500},
+    {5, 15, 0, {0, 100, 200}, 600, 500},
+    {5, 30, 0, {0, 100, 200}, 700, 500},
+    {5, 45, 0, {0, 100, 200}, 700, 500},
+    {6, 0, 0, {0, 0, 200}, 600, 500},
+    {6, 15, 0, {377, 0, 200}, 600, 500},
+    {6, 30, 0, {740, 0, 200}, 700, 500},
+    {6, 45, 0, {1087, 0, 200}, 700, 500},
+    {7, 0, 0, {1420, 0, 200}, 800, 5000},
+    {7, 15, 0, {1738, 0, 200}, 800, 5000},
+    {7, 30, 0, {2041, 0, 200}, 900, 1000},
+    {7, 45, 0, {2330, 0, 200}, 900, 1000},
+    {8, 0, 0, {2604, 0, 200}, 800, 1000},
+    {8, 15, 0, {2862, 0, 200}, 800, 1000},
+    {8, 30, 0, {3107, 0, 200}, 900, 1000},
+    {8, 45, 0, {3336, 0, 200}, 900, 1000},
+    {9, 0, 0, {3550, 0, 200}, 600, 1000},
+    {9, 15, 0, {3750, 0, 200}, 600, 1000},
+    {9, 30, 0, {3935, 0, 200}, 700, 1000},
+    {9, 45, 0, {4105, 0, 200}, 700, 1000},
+    {10, 0, 0, {4260, 0, 200}, 600, 1000},
+    {10, 15, 0, {4401, 0, 200}, 600, 1000},
+    {10, 30, 0, {4527, 0, 200}, 700, 1000},
+    {10, 45, 0, {4638, 0, 200}, 700, 1000},
+    {11, 0, 0, {4734, 0, 200}, 600, 1000},
+    {11, 15, 0, {4815, 0, 200}, 600, 1000},
+    {11, 30, 0, {4882, 0, 200}, 700, 1000},
+    {11, 45, 0, {4933, 0, 200}, 700, 1000},
+    {12, 0, 0, {4970, 0, 200}, 600, 1000},
+    {12, 15, 0, {4993, 0, 200}, 600, 1000},
+    {12, 30, 0, {5000, 0, 200}, 700, 1000},
+    {12, 45, 0, {4993, 0, 200}, 700, 1000},
+    {13, 0, 0, {4970, 0, 200}, 600, 1000},
+    {13, 15, 0, {4933, 0, 200}, 600, 1000},
+    {13, 30, 0, {4882, 0, 200}, 700, 1000},
+    {13, 45, 0, {4815, 0, 200}, 700, 1000},
+    {14, 0, 0, {4734, 0, 200}, 600, 1000},
+    {14, 15, 0, {4638, 0, 200}, 600, 1000},
+    {14, 30, 0, {4527, 0, 200}, 700, 1000},
+    {14, 45, 0, {4401, 0, 200}, 700, 1000},
+    {15, 0, 0, {4260, 0, 200}, 600, 1000},
+    {15, 15, 0, {4105, 0, 200}, 600, 1000},
+    {15, 30, 0, {3935, 0, 200}, 700, 1000},
+    {15, 45, 0, {3750, 0, 200}, 700, 1000},
+    {16, 0, 0, {3550, 0, 200}, 600, 1000},
+    {16, 15, 0, {3336, 0, 200}, 600, 1000},
+    {16, 30, 0, {3107, 0, 200}, 700, 1000},
+    {16, 45, 0, {2862, 0, 200}, 700, 1000},
+    {17, 0, 0, {2604, 0, 200}, 3300, 1000},
+    {17, 15, 0, {2330, 0, 200}, 3300, 1000},
+    {17, 30, 0, {2041, 0, 200}, 3400, 1000},
+    {17, 45, 0, {1738, 0, 200}, 3400, 1000},
+    {18, 0, 0, {1420, 0, 200}, 800, 3000},
+    {18, 15, 0, {1087, 0, 200}, 800, 3000},
+    {18, 30, 0, {740, 0, 200}, 900, 3000},
+    {18, 45, 0, {377, 0, 200}, 900, 3000},
+    {19, 0, 0, {0, 0, 200}, 800, 1000},
+    {19, 15, 0, {0, 100, 200}, 800, 1000},
+    {19, 30, 0, {0, 100, 200}, 900, 1000},
+    {19, 45, 0, {0, 100, 200}, 900, 1000},
+    {20, 0, 0, {0, 100, 200}, 800, 1000},
+    {20, 15, 0, {0, 100, 200}, 800, 1000},
+    {20, 30, 0, {0, 100, 200}, 900, 1000},
+    {20, 45, 0, {0, 100, 200}, 900, 1000},
+    {21, 0, 0, {0, 100, 200}, 800, 500},
+    {21, 15, 0, {0, 100, 200}, 800, 500},
+    {21, 30, 0, {0, 100, 200}, 900, 500},
+    {21, 45, 0, {0, 100, 200}, 900, 500},
+    {22, 0, 0, {0, 100, 200}, 800, 500},
+    {22, 15, 0, {0, 100, 200}, 800, 500},
+    {22, 30, 0, {0, 100, 200}, 900, 500},
+    {22, 45, 0, {0, 100, 200}, 900, 500},
+    {23, 0, 0, {0, 100, 200}, 600, 500},
+    {23, 15, 0, {0, 100, 200}, 600, 500},
+    {23, 30, 0, {0, 100, 200}, 700, 500},
+    {23, 45, 0, {0, 100, 200}, 700, 500}
 };
 
 char Simulation::simulationReading[]=
@@ -95,14 +167,23 @@ Simulation::Simulation()
     logger.logInfo("Simulation Started");
     config              =Configuration::getInstance();
     clock               =Clock::getInstance();
-    previousPowerIndex  =-1;
+
+    // Resent kWh & gas meters to 0, then try to read from file
     energyImportLow     =0.0;
     energyImportNormal  =0.0;
     energyExportLow     =0.0;
     energyExportNormal  =0.0;
+    volumeGas           =0.0;
     readSimulatedMeterFile();
+
+    powersCurrent.pulseMeterPower[0]=0;
+    powersCurrent.pulseMeterPower[1]=0;
+    powersCurrent.pulseMeterPower[2]=0;
+    powersCurrent.grossPowerUsage   =0;
+    powersCurrent.gasFlow           =0;
+
+    previousPowerIndex  =-1;
     clock->getTime(&previousTime);
-    previousTimeEpoch   =clock->getLastTimeAsEpoch();   
 }
 
 /******************************************************************************\
@@ -118,15 +199,15 @@ Simulation::~Simulation()
 
 /******************************************************************************\
 *
-* Runs the simulation process, exectue each
+* Runs the simulation process, exectue each ~second
 *
 \******************************************************************************/
 void Simulation::process()
 {
+    // Estimate current electricity powers and gas flow
     solarTime_t currentTime;
     clock->getTime(&currentTime);
-    double currentTimeEpoch =clock->getLastTimeAsEpoch();   
-    double secondsPassed    =currentTimeEpoch-previousTimeEpoch;
+    double secondsPassed    =currentTime.epoch-previousTime.epoch;
     findSimValueByTime(currentTime.hour, currentTime.minute, currentTime.second);
 
     // Current net power usage
@@ -140,9 +221,12 @@ void Simulation::process()
     }
     powerNetPower=powersCurrent.grossPowerUsage-production;
 
+    // Get net electricity import and export power (at least one of them is 0 Wh)
     powerImport=powerNetPower>=0? powerNetPower: 0; 
     powerExport=powerNetPower<0 ?-powerNetPower: 0; 
 
+    // Calculate kWh and m3 energy meters and create 
+    // the P1 smart meter message that corresponds to current situation
     bool normalTariff=currentTime.hour>=NORMALTARIFF_MINHOUR && currentTime.hour<NORMALTARIFF_MAXHOUR;
     
     if (normalTariff)
@@ -155,13 +239,13 @@ void Simulation::process()
         energyImportLow     +=powerImport*secondsPassed/SECONDS_PER_HOUR/WATT_PER_KILOWATT;
         energyExportLow     +=powerExport*secondsPassed/SECONDS_PER_HOUR/WATT_PER_KILOWATT;
     }
+
+    volumeGas               +=powersCurrent.gasFlow*secondsPassed/SECONDS_PER_HOUR/LITER_PER_M3;
     updateSmartMeterMessage();
 
     previousTime            =currentTime;
-    previousTimeEpoch       =currentTimeEpoch;
     //dumpCurrentPowersAndEnergies();
 }
-
 
 /******************************************************************************\
 *
@@ -177,7 +261,6 @@ Simulation* Simulation::getInstance()
     return theInstance;
 }
 
-
 /******************************************************************************\
 *
 * Helper: Returns the current active simulation value
@@ -185,8 +268,8 @@ Simulation* Simulation::getInstance()
 \******************************************************************************/
 void Simulation::findSimValueByTime(int hour, int minute, int second)
 {
-    int daySeconds=hour*SECONDS_PER_HOUR+minute*SECONDS_PER_MINUTE+second;
-    int found=-1;
+    int daySeconds                      =hour*SECONDS_PER_HOUR+minute*SECONDS_PER_MINUTE+second;
+    int found                           =-1;
     for (unsigned int i=0; i<sizeof(powers) && found<0; i++)
     {
         int simSeconds      =powers[i].hour*SECONDS_PER_HOUR+powers[i].minute*SECONDS_PER_MINUTE+powers[i].seconds;
@@ -212,14 +295,17 @@ void Simulation::findSimValueByTime(int hour, int minute, int second)
         powersCurrent.pulseMeterPower[j]=powers[i1].pulseMeterPower[j]+
                                          (powers[i2].pulseMeterPower[j]-powers[i1].pulseMeterPower[j])*(daySeconds-seconds1)/(seconds2-seconds1);
     }
+    powersCurrent.gasFlow               =powers[i1].gasFlow+
+                                         (powers[i2].gasFlow-powers[i1].gasFlow)*(daySeconds-seconds1)/(seconds2-seconds1);
     powersCurrent.hour                  =hour;
     powersCurrent.minute                =minute;
     powersCurrent.seconds               =second;
 
     if (previousPowerIndex!=found)
     {
-        logger.logInfo("Simulating: pulse 1 %d W, pulse 2 %d W, pulse 3 %d W, gross power usage %d W",
-                         powersCurrent.pulseMeterPower[0], powersCurrent.pulseMeterPower[1], powersCurrent.pulseMeterPower[2], powersCurrent.grossPowerUsage);
+        logger.logInfo("Simulating: %02d:%02d:%02d pulse 1 %d W, pulse 2 %d W, pulse 3 %d W, gross power usage %d W, gas usage %d l/h",
+                         powers[i1].hour, powers[i1].minute, powers[i1].seconds,
+                         powersCurrent.pulseMeterPower[0], powersCurrent.pulseMeterPower[1], powersCurrent.pulseMeterPower[2], powersCurrent.grossPowerUsage, powersCurrent.gasFlow);
         previousPowerIndex=found;
     }
 }
@@ -231,7 +317,6 @@ void Simulation::findSimValueByTime(int hour, int minute, int second)
 \******************************************************************************/
 void Simulation::updateSmartMeterMessage()
 {
-
     sprintf(printBuffer, "%06.3f", powerImport/WATT_PER_KILOWATT);
     memcpy(simulationReading+240, printBuffer, 6);
     sprintf(printBuffer, "%06.3f", powerExport/WATT_PER_KILOWATT);
@@ -253,7 +338,6 @@ void Simulation::updateSmartMeterMessage()
     memcpy(simulationReading+1032, printBuffer, 9);
 }
 
-
 /******************************************************************************\
 *
 * Read energy kWh counters from file
@@ -269,11 +353,11 @@ void Simulation::readSimulatedMeterFile()
     if (fptr!=NULL)
     {
         // Write some text to the file
-        fscanf (fptr, "%lf/n", &energyImportNormal);
-        fscanf (fptr, "%lf/n", &energyImportLow);
-        fscanf (fptr, "%lf/n", &energyExportNormal);
-        fscanf (fptr, "%lf/n", &energyExportLow);
-        fscanf (fptr, "%lf/n", &volumeGas);
+        fscanf (fptr, "%lf", &energyImportNormal);
+        fscanf (fptr, "%lf", &energyImportLow);
+        fscanf (fptr, "%lf", &energyExportNormal);
+        fscanf (fptr, "%lf", &energyExportLow);
+        fscanf (fptr, "%lf", &volumeGas);
         logger.logInfo("Read energy kWh counters from file %s ", filename);
         logger.logInfo("%lf kWh, %lf kWh, %lf kWh, %lf kWh, %lf m3", 
                        energyImportNormal, energyImportLow, energyExportNormal, energyExportLow, volumeGas, filename);
@@ -295,18 +379,19 @@ void Simulation::writeSimulatedMeterFile()
 {
     char* filename=config->getSimMeterFileName();
     logger.logInfo("Storing energy kWh meter to file %s", filename);
-    FILE *fptr;
+    
     // Open file in writing mode
-    fptr = fopen(filename, "w");
+    FILE *fptr = fopen(filename, "w");
     if (fptr!=NULL)
     {
         // Write some text to the file
-        fprintf(fptr, "%lf", energyImportNormal);
-        fprintf(fptr, "%lf", energyImportLow);
-        fprintf(fptr, "%lf", energyExportNormal);
-        fprintf(fptr, "%lf", energyExportLow);
-        fprintf(fptr, "%lf", volumeGas);
+        fprintf(fptr, "%lf\n", energyImportNormal);
+        fprintf(fptr, "%lf\n", energyImportLow);
+        fprintf(fptr, "%lf\n", energyExportNormal);
+        fprintf(fptr, "%lf\n", energyExportLow);
+        fprintf(fptr, "%lf\n", volumeGas);
         // Close the file
+        fflush(fptr);
         fclose(fptr);
     }
     else
@@ -314,7 +399,6 @@ void Simulation::writeSimulatedMeterFile()
         logger.logError("Unable to open simulatior meter file %s", filename);
     }
 }
-
 
 /******************************************************************************\
 *
@@ -325,7 +409,6 @@ double Simulation::getPulsePower(int powerMeter)
 {
     return powersCurrent.pulseMeterPower[powerMeter];
 }
-
 
 /******************************************************************************\
 *

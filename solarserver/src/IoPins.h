@@ -57,6 +57,7 @@
 // 1000 W, 1000 imp/kWh => 83.3 imp/5 min -> 3600 cs per pulse 360 SAMPLE_INTERVAL
 #define TESTCOUNTS_HIGH         10      // 100 ms
 #define TESTCOUNTS_LOW          350     // 3.5 s
+#define TEST_JITTER             3       // sample_times = * 0.01s
 
 typedef enum
 {
@@ -81,14 +82,14 @@ private:
     static PinConvert_t pinConversion[];
 
 
-    void initialise();
-    static IoPins*      theInstance;
+    static IoPins*       theInstance;
 
     bool                 testMode;
     int                  testCount[MAX_PULSE_COUNTERS];
     TestState_t          testState[MAX_PULSE_COUNTERS];
 
     IoPins();
+    void initialise             ();
     int getPulseInputPin        (int pulseNo);
     int getPulseLedOutputPin    (int pulseNo);
     int getTestPulseValue       (int pulseNo);

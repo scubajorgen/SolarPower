@@ -1,4 +1,10 @@
-#if !defined(SCHEDULER_H)
+/******************************************************************************\
+*
+* Scheduler.h
+* Scheduler for periodic tasks
+*
+\******************************************************************************/
+#ifndef SCHEDULER_H
 #define SCHEDULER_H
 
 #include "pthread.h"
@@ -84,7 +90,6 @@ private:
     void                    storeAndResetMeasurement        ();
     void                    storeAndResetMaxPowerValues     ();
 
-
 public:
 
     static Scheduler*       getInstance                     ();
@@ -95,7 +100,6 @@ public:
     void                    getCurrentPowerMax              (MaxPower_t* maxPower);
     void                    resetCurrentPowerMax            ();
     void                    logStatus                       ();
-
 };
 
 

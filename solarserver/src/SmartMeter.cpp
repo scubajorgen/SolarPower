@@ -567,8 +567,9 @@ int SmartMeter::dataAvailable()
         }
         dataAvailable=strlen(simMeterMessage)-simPointer;
         // Simulate serial port error
-        if (rand()%1000000<10)
+        if (rand()%1000000==0)
         {
+            logger.logInfo("Bad luck: simulating comport error :->");
             dataAvailable=-1;
         }
     }

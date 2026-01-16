@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 
+#include "Client.h"
 #include "Scheduler.h"
 #include "Log.h"
 #include "Connection.h"
@@ -67,6 +68,7 @@ void runAsConsoleApplication()
 
 
     initialiseClient();
+    Client*         client=Client::getInstance();
 
     // wait for user input
     while (strcmp(userInput, "quit\n")!=0)
@@ -76,21 +78,25 @@ void runAsConsoleApplication()
 
         if (strcmp(userInput, "max\n")==0)
         {
-            scheduler->requestInstantMax();
+            client->requestInstantMax();
         }
         else if (strcmp(userInput, "time\n")==0)
         {
-            scheduler->requestTime();
+            client->requestTime();
         }
 
         else if (strcmp(userInput, "resetmax\n")==0)
         {
-            scheduler->resetInstantMax();
+            client->resetInstantMax();
         }
 
         else if (strcmp(userInput, "sync\n")==0)
         {
-            scheduler->syncTime();
+            client->syncTime();
+        }
+        else if (strcmp(userInput, "storage\n")==0)
+        {
+            client->requestStorageInfo();
         }
         else if (strcmp(userInput, "help\n")==0)
         {
@@ -98,6 +104,7 @@ void runAsConsoleApplication()
             printf("time                compare local time and server time\n");
             printf("sync                sync time - deprecated, use NTP to sync time\n");
             printf("resetmax            reset instant max\n");
+            printf("storage             get storage info\n");
             printf("process year [yyyy] calculate and store statistics for given year \n");
             printf("help                the help page\n");
             printf("quit                bail out\n");
@@ -116,7 +123,7 @@ void runAsConsoleApplication()
                 year=atoi(substring);
                 if (year>=2000 && year <2099)
                 {
-                    scheduler->processAllDays(year);
+                    client->processAllDays(year);
                 }
                 else
                 {
@@ -132,9 +139,7 @@ void runAsConsoleApplication()
 
 
     }
-
     deinitialiseClient();
-
 }
 
 

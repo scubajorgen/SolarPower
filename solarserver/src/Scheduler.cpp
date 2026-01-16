@@ -79,7 +79,6 @@ void* schedulerTask(void* param)
             if (scheduler->simulationMode)
             {
                 scheduler->simulation->process();
-//scheduler->simulation->dumpCurrentPowersAndEnergies();
             }
 
             // reset tenmillisecond counter
@@ -271,16 +270,19 @@ void Scheduler::storeAndResetMeasurement()
 \******************************************************************************/
 void Scheduler::storeAndResetMaxPowerValues()
 {
+    logger.logDebug("Store & Rest daily max power values");
     pthread_mutex_lock(&mutex);
     for (int i=0; i<MAX_PULSE_COUNTERS; i++)
     {
         // store the maximum value of the day
         counters[i]->getCurrentPowerMax(&(maxPower.maxPowerTimeDiff[i]), &(maxPower.maxPower[i]), &(maxPower.maxPowerTime[i]));
+
         // reset the value for the next day.
         counters[i]->resetCurrentPowerMax();
     }
     pthread_mutex_unlock(&mutex);
 
+    // Store outside the mutex area, to prevent deadlock
     measurementStorage->appendMaxPower(&maxPower);
 }
 
@@ -332,7 +334,7 @@ void Scheduler::measureStateMachine()
 
             // After the final interval of previous day has been stored (starting at 23:55, ending at 00:00)
             // store and reset the instant max counter
-            if ((pulseTime.hour==00) && (pulseTime.minute==00))
+            if ((pulseTime.hour==0) && (pulseTime.minute==0))
             {
                 storeAndResetMaxPowerValues();
             }
@@ -517,6 +519,7 @@ void Scheduler::logStatus()
     {
         counters[i]->logStatus();
     }
+    measurementStorage->logStatus();
     logger.logReport("________________________________________________");
     pthread_mutex_unlock(&mutex);
 }

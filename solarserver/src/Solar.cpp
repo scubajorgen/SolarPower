@@ -131,9 +131,36 @@ void runAsConsoleApplication()
     {
         fgets(userInput, 99, stdin);
 
-        if (strcmp(userInput, "status\n")==0)
+        if (strcmp(userInput, "quit\n")==0)
+        {
+        } 
+        else if (strcmp(userInput, "status\n")==0)
         {
             scheduler->logStatus();
+        } 
+        else if (strcmp(userInput, "loglevel debug\n")==0)
+        {
+            logger.logReport("Setting loglevel to DEBUG");
+            Log::setLogLevel(LOGLEVEL_DEBUG);
+        }
+        else if (strcmp(userInput, "loglevel info\n")==0)
+        {
+            logger.logReport("Setting loglevel to INFO");
+            Log::setLogLevel(LOGLEVEL_INFO);
+        }
+        else if (strcmp(userInput, "loglevel warning\n")==0)
+        {
+            logger.logReport("Setting loglevel to WARNING");
+            Log::setLogLevel(LOGLEVEL_WARNING);
+        }
+        else
+        {
+            logger.logReport("Mmmmm... I am not really diggin' that. Use: ");
+            logger.logReport("    quit             - terminate application");
+            logger.logReport("    status           - status info");
+            logger.logReport("    loglevel debug   - set loglevel to DEBUG");
+            logger.logReport("    loglevel info    - set loglevel to INFO");
+            logger.logReport("    loglevel warning - set loglevel to WARNING");
         }
     }
     deinitialiseSolar();

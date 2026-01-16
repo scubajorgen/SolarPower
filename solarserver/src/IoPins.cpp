@@ -66,7 +66,7 @@ PinConvert_t IoPins::pinConversion[]=
 \******************************************************************************/
 IoPins::IoPins()
 {
-    configuration       =Configuration::getInstance();
+    configuration           =Configuration::getInstance();
 
     // Variables for testmode. Set testMode to true for testmode. 
     // When in testmode, the system simulates incoming pulses. One pulse
@@ -182,11 +182,7 @@ IoPins::~IoPins()
 \******************************************************************************/
 void IoPins::setLed(int ledNr, int state)
 {
-    int pin;
-
-    pin=-1;
-    
-
+    int pin=-1;
     switch (ledNr)
     {
         case IOPINS_LED_HEARTBEAT:
@@ -205,9 +201,8 @@ void IoPins::setLed(int ledNr, int state)
         }
         else
         {
-            digitalWrite(pin, HIGH); 
+            digitalWrite(pin, HIGH);
         }
-//        gpio->setPin(pin, state);
     }
 }
 
@@ -232,10 +227,11 @@ bool IoPins::getPulse(int pulseNo)
     if (!testMode)
     {
         // Read pin 
-        ioValue=digitalRead(getPulseInputPin(pulseNo));      
+        ioValue=digitalRead(getPulseInputPin(pulseNo));
     }
     else
     {
+        // Simulation mode
         ioValue=getTestPulseValue(pulseNo);
     }
     return (ioValue>0);
@@ -300,40 +296,70 @@ int IoPins::convertPinNameToPin(char* pinName)
     return pin;
 }
 
-
 /******************************************************************************\
 *
-*  Simulate a pulse
+*  Simulate a pulse. This function is called at a fixed frequency of 
+*  MICROSECONDS_PER_SECONDS/SAMPLE_TIME per second (100x per second)
 *
-*         _______________                                   ____
-*  ______|               |_________________________________|
-*          TESTCOUNT_HIGH           TESTCOUNT_LOW
-*
+*         _________________                                   ____
+*  ______|                 |_________________________________|
+*          TESTSTATE_HIGH             TESTSTATE_LOW
+*         < TESTCOUNT_HIGH ><         sampleCount            >
 \******************************************************************************/
 int IoPins::getTestPulseValue(int pulseNo)
 {
     int ioValue=0;
 
+    // Get current power
+    double  power           =simulation->getPulsePower(pulseNo)/WATTHOUR_PER_KILOWATTHOUR;
+    double  time;
+    if (power>0.0)
+    {
+        // Time in seconds between two pulses
+        time                =SECONDS_PER_HOUR/(configuration->getPulsesPerKwh(pulseNo)*power);
+    }
+    else
+    {
+        // If power=0, it would be infinite; set time between to pulses to one day
+        time                =SECONDS_PER_DAY*(MICROSECONS_PER_SECOND/SAMPLE_TIME);
+    }
+    // Given the current power, sampleCount is the number of sample times between two pulses
+    int     sampleCount     =(int)(time*MICROSECONS_PER_SECOND/SAMPLE_TIME)-TESTCOUNTS_HIGH;
+
     testCount[pulseNo]--;
     switch (testState[pulseNo])
     {
         case TESTSTATE_LOW:
-            ioValue=0;
+            ioValue                 =0;
             if (testCount[pulseNo]<=0)
             {
-                testState[pulseNo]=TESTSTATE_HIGH;
-                testCount[pulseNo]=TESTCOUNTS_HIGH;
+                testState[pulseNo]  =TESTSTATE_HIGH;
+                testCount[pulseNo]  =TESTCOUNTS_HIGH;
+            }
+            else
+            {
+                // If current testCount value is larger than what you would expect based on current power, adjust
+                if (sampleCount<testCount[pulseNo]-TEST_JITTER)
+                {
+                    logger.logDebug("Counter %d Adjusting simulation pulse counter from %d to %d. Current power: %lf", 
+                                    pulseNo, testCount[pulseNo], sampleCount, power);
+                    testCount[pulseNo]=sampleCount;
+                }
             }
             break;
+
         case TESTSTATE_HIGH:
-            ioValue=1;
+            ioValue                 =1;
             if (testCount[pulseNo]<=0)
             {
+                // pulse expired, generate next pause
                 testState[pulseNo]  =TESTSTATE_LOW;
-                double  power       =simulation->getPulsePower(pulseNo)/WATTHOUR_PER_KILOWATTHOUR;
-                double  time        =SECONDS_PER_HOUR/(configuration->getPulsesPerKwh(pulseNo)*power);
-                int     samples     =(int)(time*MICROSECONS_PER_SECOND/SAMPLE_TIME)-TESTCOUNTS_HIGH;
-                testCount[pulseNo]  =samples+(rand()%40)-20; // add some jitter
+                testCount[pulseNo]  =sampleCount+(rand()%(2*TEST_JITTER))-TEST_JITTER; // add some jitter +/- TEST_JITTER * SAMPLE_TIME
+                // Assure the next pause is at least as long as a pulse length
+                if (testCount[pulseNo]<TESTCOUNTS_HIGH)
+                {
+                    testCount[pulseNo]=TESTCOUNTS_HIGH;
+                }
             }
             break;
     }

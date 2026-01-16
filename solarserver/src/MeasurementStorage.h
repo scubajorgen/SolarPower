@@ -52,12 +52,14 @@ class MeasurementStorage
     Log                             logger {"measurements"};
     static MeasurementStorage*      theInstance;
 
-    Measurement_t                   measurements[MEASUREMENTSTORAGESIZE];
-    int                             startOfArray;
-    int                             endOfArray;
+    Measurement_t                   measurements[MEASUREMENTSTORAGESIZE];   // FIFO buffer or circular buffer
+    int                             startOfArray;                           // Oldest element
+    int                             startOfArrayNext;                       // Pointer for sending
+    int                             endOfArray;                             // First vacant position
     
-    MaxPower_t                      maxPowers[MAXPOWERSTORAGESIZE];
+    MaxPower_t                      maxPowers[MAXPOWERSTORAGESIZE];         // FIFO buffer or circular buffer
     int                             maxPowerStartOfArray;
+    int                             maxPowerStartOfArrayNext;
     int                             maxPowerEndOfArray;    
     
     pthread_mutex_t                 mutex;   						// and a mutex
@@ -73,14 +75,19 @@ public:
     
     int                             getNumberOfMeasurementRecords   ();  
     void                            appendMeasurement               (Measurement_t* measurement);   
-    bool                            getMeasurement                  (int number, Measurement_t* measurement);
-    bool                            getLastMeasurement              (Measurement_t* measurement);
+
+    bool                            resetMeasurementNext            ();
+    bool                            getNextMeasurement              (Measurement_t* measurement);
+    bool                            purgeRetrievedMeasurements      ();
     
     int                             getNumberOfMaxPowerRecords      ();
-    void                            appendMaxPower                  (MaxPower_t* maxPower); 
-    bool                            getPowerMaxValue                (int number, MaxPower_t* maxPower);   
-    bool                            getLastPowerMaxValue            (MaxPower_t* maxPower);   
-    
+    void                            appendMaxPower                  (MaxPower_t* maxPower);
+
+    bool                            resetPowerMaxNext               ();
+    bool                            getNextPowerMaxValue            (MaxPower_t* maxPower);
+    bool                            purgeRetrievedPowerMaxValues    ();
+
+    void                            logStatus                       ();
 };
 
 #endif

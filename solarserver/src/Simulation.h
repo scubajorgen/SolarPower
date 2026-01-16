@@ -21,7 +21,7 @@ typedef struct
     int seconds;
     int pulseMeterPower[MAX_PULSE_COUNTERS];    // Pulse meter power in W per interval
     int grossPowerUsage;                        // Gross usage power in W per interval
-    int gasFlow;                                // Gas flow in m3 per hour
+    int gasFlow;                                // Gas flow in l per hour
 } Sim_t;
 
 
@@ -31,14 +31,13 @@ class Simulation
 private:
     Log                 logger {"simulation"};
     static Simulation*  theInstance;
-    static Sim_t        powers[24];
+    static Sim_t        powers[QUARTERS_PER_DAY];
     int                 previousPowerIndex;
     Configuration*      config;
     Clock*              clock;
     char                printBuffer[20];
 
     solarTime_t         previousTime;
-    double              previousTimeEpoch;
     Sim_t               powersCurrent;
     double              powerNetPower;
     double              powerImport;
