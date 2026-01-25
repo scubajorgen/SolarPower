@@ -511,6 +511,7 @@ void Scheduler::logStatus()
 {
     pthread_mutex_lock(&mutex);
     logger.logReport("____________________ STATUS ____________________");
+    logger.logReport("SolarServer version %s", VERSION);
     logger.logReport("Scheduler started %02d-%02d-%04d %02d:%02d:%02d GMT",
                     schedulerStartTime.day, schedulerStartTime.month, schedulerStartTime.year+2000, 
                     schedulerStartTime.hour, schedulerStartTime.minute, schedulerStartTime.second);
@@ -520,6 +521,7 @@ void Scheduler::logStatus()
         counters[i]->logStatus();
     }
     measurementStorage->logStatus();
+    SolarPublish::getInstance()->logStatus();
     logger.logReport("________________________________________________");
     pthread_mutex_unlock(&mutex);
 }

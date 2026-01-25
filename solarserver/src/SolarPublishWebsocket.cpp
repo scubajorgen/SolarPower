@@ -127,8 +127,8 @@ void* websocketServerTask(void* param)
     char client_name[128];
     char client_ip[128];
 #endif
-    char buf[256];
-    unsigned int n;
+    char        buf[256];
+    unsigned    int n;
 #ifdef EXTERNAL_POLL
     int m;
     int fd = (int)(long)user;
@@ -262,14 +262,10 @@ static void dump_handshake_info(struct lws *wsi)
     {
         if (!lws_hdr_total_length(wsi, (lws_token_indexes)n))
             continue;
-
         lws_hdr_copy(wsi, buf, sizeof buf, (lws_token_indexes)n);
-
         fprintf(stderr, "    %s = %s\n", token_names[n], buf);
     }
 }
-
-/* dumb_increment protocol */
 
 /******************************************************************************\
 *
@@ -290,17 +286,31 @@ int callback_solarpower(struct lws *wsi,
 
     // Not used here... 
     perSessionDataSolarPower_t *pss = (perSessionDataSolarPower_t *)user;
-    
-    
-    solarPublish=(SolarPublishWebsocket*)SolarPublishWebsocket::getInstance();
 
+    solarPublish=(SolarPublishWebsocket*)SolarPublishWebsocket::getInstance();
     switch (reason) 
     {
-
     case LWS_CALLBACK_ESTABLISHED:
         lwsl_info("callback_dumb_increment: "
                   "LWS_CALLBACK_ESTABLISHED");
-        pss->messageQueueTail=solarPublish->messageQueueHead;                
+        pthread_mutex_lock(&solarPublish->mutex);
+        // Get a local COPY of the current tail of the Queue to be used for this client
+        // (each client gets its own tail).
+        // Skip the oldest values, because they may be overwritten before we can send it 
+        // (in case the buffer is full). We have at least 2 seconds to send the next oldest values
+        pss->messageQueueTail=solarPublish->messageQueueTail;
+        for (int i=0; i<MESSAGETYPES; i++)
+        {
+            if (pss->messageQueueTail!=solarPublish->messageQueueHead)
+            {
+                pss->messageQueueTail++;
+                if (pss->messageQueueTail==QUEUEDEPTH)
+                {
+                    pss->messageQueueTail=0;
+                }
+            }
+        }   
+        pthread_mutex_unlock(&solarPublish->mutex);
         break;
 
     case LWS_CALLBACK_SERVER_WRITEABLE:
@@ -309,11 +319,13 @@ int callback_solarpower(struct lws *wsi,
         // If anything to send in the buffer
         if (pss->messageQueueTail!=solarPublish->messageQueueHead)
         {
+            message_t msg=solarPublish->messageQueue[pss->messageQueueTail];
             // fetch next for sending
-            n = sprintf((char *)p, "%d %f", solarPublish->messageQueue[pss->messageQueueTail].reading,
-                                            solarPublish->messageQueue[pss->messageQueueTail].value);
+            n = sprintf((char *)p, "%d %f %lf", msg.reading,
+                                                msg.value, 
+                                                msg.time.epoch);
             pss->messageQueueTail++;
-            if (pss->messageQueueTail==QUEUE_LENGTH)
+            if (pss->messageQueueTail==QUEUEDEPTH)
             {
                 pss->messageQueueTail=0;
             }
@@ -365,8 +377,6 @@ int callback_solarpower(struct lws *wsi,
 \******************************************************************************/
 SolarPublishWebsocket::SolarPublishWebsocket():SolarPublish()
 {
-    messageQueueHead=0;
-    messageQueueTail=0;
 }
  
 /******************************************************************************\
@@ -396,9 +406,7 @@ void SolarPublishWebsocket::start()
 {
     // Start the websocket server
     startWebSocketServer();
-
     SolarPublish::start();
-
     startThread(websocketServerTask);
 }
 
@@ -410,8 +418,7 @@ void SolarPublishWebsocket::start()
 void SolarPublishWebsocket::stop()
 {
     SolarPublish::stop();
-    
-    // Start the websocket server
+    // Stop the websocket server
     closeWebSocketServer();
 }
 
@@ -422,16 +429,7 @@ void SolarPublishWebsocket::stop()
 \******************************************************************************/
 void SolarPublishWebsocket::postMessage(solarTime_t time, int reading, double value)
 {
-    pthread_mutex_lock(&mutex); 
-    messageQueue[messageQueueHead].time   =time;
-    messageQueue[messageQueueHead].reading=reading;
-    messageQueue[messageQueueHead].value  =value;
-    messageQueueHead++;
-    if (messageQueueHead==QUEUE_LENGTH)
-    {
-        messageQueueHead=0;
-    }
-    pthread_mutex_unlock(&mutex); 
+    SolarPublish::postMessage(time, reading, value);
     
     // Signal something to send
     lws_callback_on_writable_all_protocol(context, &protocols[PROTOCOLINDEX_SOLARPOWER]); 
@@ -455,7 +453,6 @@ SolarPublishWebsocket::~SolarPublishWebsocket()
 \******************************************************************************/
 void logFunction(int level, const char* line)
 {
-//    lwsl_emit_syslog(level, line);
     socketLogger.logInfo(line);  
 }
 

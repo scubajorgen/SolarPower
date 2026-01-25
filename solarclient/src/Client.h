@@ -42,7 +42,9 @@ typedef enum
     COMMAND_ACKMEASUREMENTTRANSFER  =20,
     COMMAND_ACKPOWERMAXTRANSFER     =21,
     COMMAND_SENDSTORAGEINFO         =22,
-    COMMAND_RECEIVESTORAGEINFO      =23
+    COMMAND_RECEIVESTORAGEINFO      =23,
+    COMMAND_SENDVERSIONINFO         =24,
+    COMMAND_RECEIVEVERSIONINFO      =25
 
 } command_t;
 
@@ -77,6 +79,7 @@ public:
     void                    requestInstantMax               ();
     void                    resetInstantMax                 ();
     void                    requestStorageInfo              ();
+    void                    requestVersion                  ();
 
     void                    calibratePulses                 ();
     bool                    requestMeasurements             ();     // request measurements from the server

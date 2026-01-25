@@ -10,6 +10,7 @@
 #include <syslog.h>
 #include <pthread.h>
 
+#include "common.h"
 #include "SolarPublishAmqp.h"
 #include "Configuration.h"
 
@@ -26,9 +27,9 @@ void* sendTask(void* param)
 {
     SolarPublishAmqp*   solarPublishAmqp;
     bool                localCloseTask;
-    char*               message; 
+    message_t*          message; 
+    message_t           lastMessage;
     int                 timeCount;
-    char*               lastMessage;
     bool                success;
 
     solarPublishAmqp=(SolarPublishAmqp*)SolarPublishAmqp::getInstance();
@@ -43,13 +44,12 @@ void* sendTask(void* param)
     // Some local variables
     localCloseTask                  = false;
     timeCount                       = 0;
-    lastMessage                     = NULL;
+    lastMessage.reading             = INVALID_READING;
     
     // the task loop
     while (!localCloseTask)
     {
-        message=solarPublishAmqp->popQueue();
-        
+        message                     =solarPublishAmqp->popQueue();
         if (message!=NULL)
         {
             success=solarPublishAmqp->openConnection();
@@ -58,9 +58,9 @@ void* sendTask(void* param)
                 // Send all the messages in the buffer in this session
                 do
                 {
-                    success=solarPublishAmqp->sendTheMessage(message);
-                    lastMessage=message;
-                    message=solarPublishAmqp->popQueue();
+                    success     =solarPublishAmqp->sendTheMessage(message);
+                    lastMessage =*message;
+                    message     =solarPublishAmqp->popQueue();
                 }
                 while (success && message!=NULL);
             }
@@ -74,20 +74,16 @@ void* sendTask(void* param)
         {
             // Sleep 0.3 s 
             usleep(300000);
-            
             timeCount++;
-            
             // If 10 sec passed, repeat last message
             if (timeCount==33)
             {
                 timeCount=0;
-                if (lastMessage!=NULL)
+                if (lastMessage.reading!=INVALID_READING)
                 {
-                    solarPublishAmqp->amqpSend(lastMessage);
-                }    
+                    solarPublishAmqp->amqpSend(&lastMessage);
+                }
             }
-            
-            
         }
         
 
@@ -222,10 +218,15 @@ bool SolarPublishAmqp::openConnection()
 * Send the message
 *
 \******************************************************************************/
-bool SolarPublishAmqp::sendTheMessage(char* messageText)
+bool SolarPublishAmqp::sendTheMessage(message_t* message)
 {
     bool success            =true;
     int  status;
+
+        // fetch next for sending
+    sprintf(messageText, "%d %f %lf", message->reading,
+                                      message->value, 
+                                      message->time.epoch);
     amqp_basic_properties_t props;
     props._flags            = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
     props.content_type      = amqp_literal_bytes((void*)"text/plain");
@@ -274,7 +275,7 @@ bool SolarPublishAmqp::closeConnection()
 *
 \******************************************************************************/
 
-void SolarPublishAmqp::amqpSend(char* messageText)
+bool SolarPublishAmqp::amqpSend(message_t* messageText)
 {
     bool success=openConnection();
     if (success)
@@ -285,4 +286,5 @@ void SolarPublishAmqp::amqpSend(char* messageText)
     {
         closeConnection();
     }
+    return success;
 }

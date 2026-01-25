@@ -18,6 +18,7 @@
 #include "Clock.h"
 #include "Scheduler.h"
 #include "Configuration.h"
+#include "SolarPublish.h"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -207,6 +208,10 @@ void Server::processCommand(int socket, char* data, int blockSize)
         case COMMAND_SENDSTORAGEINFO:
             logger.logInfo("COMMAND: send storage size information");
             sendStorageSizes(socket);
+            break;
+        case COMMAND_SENDVERSIONINFO:
+            logger.logInfo("COMMAND: send version information (%s)", VERSION);
+            sendVersion(socket);
             break;
 
         case COMMAND_SENDALLSTOREDMAXS:
@@ -651,11 +656,31 @@ void Server::sendStorageSizes(int socket)
 
     sendBuffer[0]=COMMAND_RECEIVESTORAGEINFO;
 
-    int recordSize=sizeof(char)+4*sizeof(INT32);
+    int recordSize=sizeof(char)+6*sizeof(INT32);
     *(INT32*)      (sendBuffer+recordSize*0+ 1)      =MEASUREMENTSTORAGESIZE;
     *(INT32*)      (sendBuffer+recordSize*0+ 5)      =measurementStorage->getNumberOfMeasurementRecords();
     *(INT32*)      (sendBuffer+recordSize*0+ 9)      =MAXPOWERSTORAGESIZE;
     *(INT32*)      (sendBuffer+recordSize*0+13)      =measurementStorage->getNumberOfMaxPowerRecords();
+    *(INT32*)      (sendBuffer+recordSize*0+17)      =QUEUEDEPTH;
+    *(INT32*)      (sendBuffer+recordSize*0+21)      =SolarPublish::getInstance()->getQueueSize();
 
+    send(socket, sendBuffer, recordSize, 0);
+}
+
+/******************************************************************************\
+*
+* This method sends version info
+*
+\******************************************************************************/
+void Server::sendVersion(int socket)
+{
+    char version[10];
+    // send each measurment as a separate TCP block
+    // C V V V V V V V V V V
+    sendBuffer[0]=COMMAND_RECEIVEVERSIONINFO;
+
+    int recordSize=sizeof(char)+10;
+    sprintf(version, "%s", VERSION);
+    strncpy((char*)(sendBuffer+1), version, 10);
     send(socket, sendBuffer, recordSize, 0);
 }

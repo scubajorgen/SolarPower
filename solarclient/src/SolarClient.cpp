@@ -39,7 +39,7 @@ Log             logger("SolarClient");
 
 void initialiseClient()
 {
-    logger.logReport("SOLAR POWER MONITOR CLIENT 6.0");
+    logger.logReport("SOLAR POWER MONITOR CLIENT %s", VERSION);
     configuration->dumpConfig();
     scheduler=Scheduler::getInstance();
 }
@@ -98,6 +98,10 @@ void runAsConsoleApplication()
         {
             client->requestStorageInfo();
         }
+        else if (strcmp(userInput, "version\n")==0)
+        {
+            client->requestVersion();
+        }
         else if (strcmp(userInput, "help\n")==0)
         {
             printf("max                 get instant max\n");
@@ -106,6 +110,7 @@ void runAsConsoleApplication()
             printf("resetmax            reset instant max\n");
             printf("storage             get storage info\n");
             printf("process year [yyyy] calculate and store statistics for given year \n");
+            printf("version             version info\n");
             printf("help                the help page\n");
             printf("quit                bail out\n");
         }

@@ -8,6 +8,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define VERSION                         "6.1"
+
 // This define defines the interval of measurement in minutes
 // Note: an hour should be dividable by this amount
 // Hence: 1, 2, 3, 4, 5, 6, 10, 12, ... minutes
@@ -22,7 +24,8 @@
 #define SECONDS_PER_DAY                 (24*3600)
 #define SECONDS_PER_HOUR                3600
 #define SECONDS_PER_MINUTE              60
-#define MICROSECONS_PER_SECOND          1000000
+#define MILLISECONDS_PER_SECOND         1000
+#define MICROSECONDS_PER_SECOND         1000000
 
 #define INTERVALS_PER_DAY               (MINUTES_PER_DAY/MEASUREMENT_INTERVAL)
 #define INTERVALS_PER_HOUR              (MINUTES_PER_HOUR/MEASUREMENT_INTERVAL)
@@ -43,6 +46,8 @@
 
 // Sample time in microseconds. This is the time between two samples of the pulse
 #define SAMPLE_TIME                     10000
+#define PUBLISHINTERVAL                 2            // interval for websocket publishing in sec
+
 
 #define MAX_PULSE_COUNTERS              3
 

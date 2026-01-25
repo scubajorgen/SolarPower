@@ -57,7 +57,9 @@ typedef enum
     COMMAND_ACKMEASUREMENTTRANSFER  =20,
     COMMAND_ACKPOWERMAXTRANSFER     =21,
     COMMAND_SENDSTORAGEINFO         =22,
-    COMMAND_RECEIVESTORAGEINFO      =23
+    COMMAND_RECEIVESTORAGEINFO      =23,
+    COMMAND_SENDVERSIONINFO         =24,
+    COMMAND_RECEIVEVERSIONINFO      =25
 } command_t;
 
 
@@ -118,6 +120,7 @@ private:
     void                ackMeasurementTransfer      (int socket);
     void                ackPowerMaxsTransfer        (int socket);
     void                sendStorageSizes            (int socket);
+    void                sendVersion                 (int socket);
 
 public:
     static Server*      getInstance                 ();

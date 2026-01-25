@@ -12,9 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h> 
 
-
 #include "libwebsockets.h"
-
 
 #include "Toolbox.h"
 #include "Log.h"
@@ -22,9 +20,6 @@
 #include "SolarPublish.h" 
 
 #define LOCAL_RESOURCE_PATH "./html"
-
-#define QUEUE_LENGTH 200
-
 
 /* solarpower protocol */
 
@@ -41,14 +36,6 @@ typedef struct
     int     messageQueueTail;
 } perSessionDataSolarPower_t;
 
-
-typedef struct
-{
-    int             reading;
-    solarTime_t     time;
-    double          value;
-} message_t;
-
 struct serveable 
 {
     const char *urlpath;
@@ -58,11 +45,8 @@ struct serveable
 class SolarPublishWebsocket:SolarPublish
 {
 private:
-    message_t               messageQueue[QUEUE_LENGTH];
-    int                     messageQueueHead;
-    int                     messageQueueTail;
-                            SolarPublishWebsocket                       ();
-    friend void*            websocketServerTask                         (void* param);
+                            SolarPublishWebsocket       ();
+    friend void*            websocketServerTask         (void* param);
 
     friend  int             callback_http               (struct lws *wsi,
                                                          enum lws_callback_reasons reason, void *user,
@@ -77,14 +61,14 @@ private:
     void                    websocketSend               (char* messageText);
 
 public:
-    static SolarPublish*                    getInstance ();
+    static SolarPublish*    getInstance                 ();
 
-    void                                    postMessage                 (solarTime_t time, int reading, double value);
+    void                    postMessage                 (solarTime_t time, int reading, double value);
    
-    void                                    start                       ();
-    void                                    stop                        ();
+    void                    start                       ();
+    void                    stop                        ();
 
-                                            ~SolarPublishWebsocket      (); 
+                            ~SolarPublishWebsocket      (); 
 };
  
 #endif

@@ -64,7 +64,7 @@ int             pidFileHandle;
 \******************************************************************************/
 void initialiseSolar()
 {
-    logger.logReport("SOLAR POWER MONITOR 6.0 FOR RASPBERRY PI") ;
+    logger.logReport("SOLAR POWER MONITOR %s FOR RASPBERRY PI", VERSION) ;
 
     configuration->dumpConfig();
 

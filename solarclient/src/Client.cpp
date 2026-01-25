@@ -647,7 +647,7 @@ void Client::acknowledgeInstantMaxValues()
 void Client::requestStorageInfo()
 {
     logger.logInfo("Requesting storage info");
-    int             recordLength    =sizeof(char)+4*sizeof(INT32);
+    int             recordLength    =sizeof(char)+6*sizeof(INT32);
 
     // get the instance from the server connection and open the connection
     Connection*connection           =Connection::getInstance();
@@ -670,8 +670,10 @@ void Client::requestStorageInfo()
             INT32 measurementUsed   =*(INT32*)(sendReceiveBuffer+ 5);
             INT32 dailyMaxSize      =*(INT32*)(sendReceiveBuffer+ 9);
             INT32 dailyMaxUsed      =*(INT32*)(sendReceiveBuffer+13);
-            logger.logReport("Storage usage: measurements %d/%d, daily max %d/%d",
-                                measurementUsed, measurementSize, dailyMaxUsed, dailyMaxSize);
+            INT32 messageQueueSize  =*(INT32*)(sendReceiveBuffer+17);
+            INT32 messageQueueUsed  =*(INT32*)(sendReceiveBuffer+21);
+            logger.logReport("Storage usage: measurements %d/%d, daily max %d/%d, message queue %d/%d",
+                                measurementUsed, measurementSize, dailyMaxUsed, dailyMaxSize, messageQueueUsed, messageQueueSize);
         }
         else
         {
@@ -684,6 +686,48 @@ void Client::requestStorageInfo()
     }
     connection->disconnectFromServer();
 }
+
+/******************************************************************************\
+*
+* This method requests the info about the version of the SolarServer
+*
+\******************************************************************************/
+void Client::requestVersion()
+{
+    logger.logInfo("Requesting version info");
+    int             recordLength    =sizeof(char)+10;
+
+    // get the instance from the server connection and open the connection
+    Connection*connection           =Connection::getInstance();
+    connection->connectToServer();
+
+    sendReceiveBuffer[0]            =(char)COMMAND_SENDVERSIONINFO;
+
+    // send the request to the server
+    connection->sendData(sendReceiveBuffer, 1);
+
+    // wait for the data
+    int receiveLength;
+    connection->waitForData(sendReceiveBuffer, &receiveLength, SENDRECEIVEBUFFERSIZE);
+
+    if (receiveLength==recordLength)
+    {
+        if (sendReceiveBuffer[0]==COMMAND_RECEIVEVERSIONINFO)
+        {
+            logger.logReport("SolarServer version: %s, SolarClient version %s", (char*)(sendReceiveBuffer+1), VERSION);
+        }
+        else
+        {
+            logger.logError("Error requesting version info: wrong response received: %d", sendReceiveBuffer[0]);
+        }
+    }
+    else
+    {
+        logger.logError("Error requesting version info: wrong size: received %d, expected %d", receiveLength, recordLength);
+    }
+    connection->disconnectFromServer();
+}
+
 
 /******************************************************************************\
 *

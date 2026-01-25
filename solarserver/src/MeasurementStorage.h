@@ -62,7 +62,7 @@ class MeasurementStorage
     int                             maxPowerStartOfArrayNext;
     int                             maxPowerEndOfArray;    
     
-    pthread_mutex_t                 mutex;   						// and a mutex
+    pthread_mutex_t                 mutex;                                  // and a mutex
     
     Configuration*                  configuration;
     

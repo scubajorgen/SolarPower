@@ -21,6 +21,7 @@
 #include <rabbitmq-c/tcp_socket.h>
  
 #define MAX_AMQPSETTING_LENGTH 128
+#define MAX_AMQPMESSAGE_SIZE   128
 
 class SolarPublishAmqp:SolarPublish
 {
@@ -37,16 +38,17 @@ private:
     char                            routingkey[MAX_AMQPSETTING_LENGTH];
     char                            vHost[MAX_AMQPSETTING_LENGTH];
 
+    char                            messageText[MAX_AMQPMESSAGE_SIZE];
 
     amqp_connection_state_t         connection;
 
                                     SolarPublishAmqp        ();
 
     friend void*                    sendTask                (void* param);
-    void                            amqpSend                (char* messageText);
+    bool                            amqpSend                (message_t* message);
 
     bool                            openConnection          ();
-    bool                            sendTheMessage          (char* messageText);
+    bool                            sendTheMessage          (message_t* message);
     bool                            closeConnection         ();
 
 public:

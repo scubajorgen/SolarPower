@@ -21,7 +21,6 @@
 
 #define TENSECONDS              1000         // number of 10 ms periods in 10 seconds
 #define ONESECOND               100          // number of 10 ms periods in 1 second
-#define PUBLISHINTERVAL         2            // interval for websocket publishing in sec
 
 #define NETPOWER                100
 #define GROSSPOWER              101

@@ -149,7 +149,7 @@ INT32 PulseCounter::calculateAverageIntervalPower()
 {
     // Retrieve pulses per kWh, it could have been changed...
     int pulsesPerKwh=configuration->getPulsesPerKwh(pulseId);
-    INT32 thePower=(60/MEASUREMENT_INTERVAL)*WATTHOUR_PER_KILOWATTHOUR*DECIWATT_PER_WATT*currentPulseCounter/pulsesPerKwh;
+    INT32 thePower  =(60/MEASUREMENT_INTERVAL)*WATTHOUR_PER_KILOWATTHOUR*DECIWATT_PER_WATT*currentPulseCounter/pulsesPerKwh;
     return thePower;
 }
 
@@ -352,7 +352,7 @@ PulseCounter::~PulseCounter()
 
 /******************************************************************************\
 *
-* Returns the measured power, in dWatt
+* Returns the measured power, in Watt
 * This is the currently measured or estimated power; -1 if not available
 *
 \******************************************************************************/
@@ -365,7 +365,7 @@ INT32 PulseCounter::getPublishPower()
 
 /******************************************************************************\
 *
-* Returns the measured import power, in dWatt; is zero for production meter.
+* Returns the measured import power, in Watt; is zero for production meter.
 * This is the currently measured or estimated power, or -1 if not available
 *
 \******************************************************************************/
@@ -388,7 +388,7 @@ INT32 PulseCounter::getCurrentImportPower()
 
 /******************************************************************************\
 *
-* Returns the measured export power, in dWatt; is zero for consumption meters
+* Returns the measured export power, in Watt; is zero for consumption meters
 * This is the currently measured or estimated power, or -1 if not available
 *
 \******************************************************************************/

@@ -28,54 +28,50 @@ SolarPublish* SolarPublish::theInstance=NULL;
 \******************************************************************************/
 SolarPublish::SolarPublish()
 {
-    int     err;
     pthread_mutexattr_t attr;
 
     // initialise the task
     taskRunning             =false;
     closeTask               =false;
 
-    startOfQueue            =0;
-    endOfQueue              =0;
+    messageQueueHead        =0;
+    messageQueueTail        =0;
 
     // create the mutex
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
 
-    err=pthread_mutex_init(&mutex, &attr);
-
+    int err=pthread_mutex_init(&mutex, &attr);
     if (err)
     {
         logger.logFatal("Unable to create mutex");
     }
-
 }
-
 
 /******************************************************************************\
 *
-* This method pushes a message on the queue
+* This method pushes a message on the queue. If the queue is full, oldest
+* item is overwritten
 *
 \******************************************************************************/
-
-void SolarPublish::pushQueue(char* item)
+void SolarPublish::pushQueue(message_t* message)
 {
-    int newStartOfQueue;
-
-    // Check whether the task needs to be killed
     pthread_mutex_lock(&mutex);
-    newStartOfQueue=startOfQueue+1;
-    if (newStartOfQueue==QUEUEDEPTH)
+    messageQueue[messageQueueHead]=*message;
+    messageQueueHead++;
+    if (messageQueueHead==QUEUEDEPTH)
     {
-        newStartOfQueue=0;
+        messageQueueHead=0;
     }
-
-    if (newStartOfQueue!=endOfQueue)
+    // If the head passes the tail, remove the tail (=oldest value)
+    if (messageQueueHead==messageQueueTail)
     {
-        strncpy(localMessageQueue[startOfQueue], item, MAXMESSAGELENGTH);
-        startOfQueue=newStartOfQueue;
+        messageQueueTail++;
+        if (messageQueueTail==QUEUEDEPTH)
+        {
+            messageQueueTail=0;
+        }
     }
-
     pthread_mutex_unlock(&mutex);
 }
 
@@ -85,31 +81,26 @@ void SolarPublish::pushQueue(char* item)
 * NULL.
 *
 \******************************************************************************/
-char* SolarPublish::popQueue()
+message_t* SolarPublish::popQueue()
 {
-    char* returnString;
-
-    // Check whether the task needs to be killed
+    message_t* msg;
     pthread_mutex_lock(&mutex);
-
-    if (endOfQueue!=startOfQueue)
+    // Check if anything in the queue
+    if (messageQueueHead!=messageQueueTail)
     {
-        strncpy(outBuffer, localMessageQueue[endOfQueue], MAXMESSAGELENGTH-1);
-        endOfQueue++;
-        if (endOfQueue==QUEUEDEPTH)
+        msg=&messageQueue[messageQueueTail];
+        messageQueueTail++;
+        if (messageQueueTail==QUEUEDEPTH)
         {
-            endOfQueue=0;
+            messageQueueTail=0;
         }
-        returnString=outBuffer;
     }
     else
     {
-        returnString=NULL;
+        msg=NULL;
     }
-
     pthread_mutex_unlock(&mutex);
-
-    return returnString;
+    return msg;
 }
 
 /******************************************************************************\
@@ -120,7 +111,7 @@ char* SolarPublish::popQueue()
 * This method returns the one and only instance of this class
 *
 \******************************************************************************/
-SolarPublish* SolarPublish::getInstance   ()
+SolarPublish* SolarPublish::getInstance()
 {
     // This method should not initialise theInstance. Instead a subclass method.
     return theInstance;
@@ -134,9 +125,7 @@ SolarPublish* SolarPublish::getInstance   ()
 void SolarPublish::startThread(void *(*threadFunction) (void *))
 {
     int err;
-
     err=pthread_create(&threadId, NULL, threadFunction, (void *)this);
-
     if (err)
     {
         logger.logError("Could not start thread function");
@@ -180,8 +169,6 @@ void SolarPublish::stop()
         localTaskRunning=taskRunning;
         pthread_mutex_unlock(&mutex);
     }
-
-
     logger.logInfo("Publishing function stopped");
 }
 
@@ -203,8 +190,11 @@ void SolarPublish::die(const char *file, int line, const char *message)
 \******************************************************************************/
 void SolarPublish::postMessage(solarTime_t time, int reading, double value)
 {
-    sprintf(inBuffer, "%d %f", reading, value);
-    pushQueue(inBuffer);
+    message_t msg;
+    msg.reading =reading;
+    msg.time    =time;
+    msg.value   =value;
+    pushQueue(&msg);
 }
 
 /******************************************************************************\
@@ -223,12 +213,10 @@ void SolarPublish::testPublish()
     i=0;
     while (i<1000000)
     {
-       logger.logDebug("Posting message");
-
+       logger.logDebug("Posting test message");
        // Get the current time
         clock->getTime(&time);
         postMessage(time, 0, (i*100)%1500);
-
         usleep(1000000);
         i++;
     }
@@ -242,4 +230,49 @@ void SolarPublish::testPublish()
 SolarPublish::~SolarPublish()
 {
     stop();
+}
+
+/******************************************************************************\
+*
+* Number of cached values in the Queue
+*
+* Example QUEUEDEPTH=10
+*
+* 0123456789
+* --XXXXX---
+*   ^    ^
+*   T    H
+* size=H-T=7-2=5
+*
+* XXX-----XX
+*    ^    ^
+*    H    T
+* size=QUEUEDEPTH-T+H=10-8+3=5
+*
+\******************************************************************************/
+int SolarPublish::getQueueSize()
+{
+    int size;
+    pthread_mutex_lock(&mutex);
+    if (messageQueueHead>=messageQueueTail)
+    {
+        size=messageQueueHead-messageQueueTail;
+    }
+    else
+    {
+        size=QUEUEDEPTH-messageQueueTail+messageQueueHead;
+    }
+    pthread_mutex_unlock(&mutex);
+    return size;
+}
+
+/******************************************************************************\
+*
+* Status logging
+*
+\******************************************************************************/
+void SolarPublish::logStatus()
+{
+    logger.logReport("Publish cache: Messages - %d/%d", 
+                    getQueueSize(), QUEUEDEPTH);
 }

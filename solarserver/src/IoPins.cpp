@@ -321,10 +321,10 @@ int IoPins::getTestPulseValue(int pulseNo)
     else
     {
         // If power=0, it would be infinite; set time between to pulses to one day
-        time                =SECONDS_PER_DAY*(MICROSECONS_PER_SECOND/SAMPLE_TIME);
+        time                =SECONDS_PER_DAY*(MICROSECONDS_PER_SECOND/SAMPLE_TIME);
     }
     // Given the current power, sampleCount is the number of sample times between two pulses
-    int     sampleCount     =(int)(time*MICROSECONS_PER_SECOND/SAMPLE_TIME)-TESTCOUNTS_HIGH;
+    int     sampleCount     =(int)(time*MICROSECONDS_PER_SECOND/SAMPLE_TIME)-TESTCOUNTS_HIGH;
 
     testCount[pulseNo]--;
     switch (testState[pulseNo])
