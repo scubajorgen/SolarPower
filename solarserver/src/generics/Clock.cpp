@@ -85,8 +85,8 @@ void Clock::getTime(solarTime_t* solarTime)
     
     nowGmt                  = gmtime(&(now.tv_sec));
     
-    currentTime.year        =nowGmt->tm_year%100;
-    currentTime.month       =nowGmt->tm_mon+1;             // tm_mon [0..11], currentTime.month [1..12]
+    currentTime.year        =nowGmt->tm_year+1900;          //
+    currentTime.month       =nowGmt->tm_mon+1;              // tm_mon [0..11], currentTime.month [1..12]
     currentTime.day         =nowGmt->tm_mday;
     currentTime.hour        =nowGmt->tm_hour;
     currentTime.minute      =nowGmt->tm_min;
@@ -133,7 +133,7 @@ void Clock::getTimeString(char* timeString)
     sprintf(timeString, "%02d-%02d-%4d %02d:%02d:%02d.%02d",
                         currentTime.day,
                         currentTime.month,
-                        currentTime.year+2000,
+                        currentTime.year,
                         currentTime.hour,
                         currentTime.minute,
                         currentTime.second,

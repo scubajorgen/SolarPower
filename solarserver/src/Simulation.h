@@ -22,7 +22,7 @@ typedef struct
     int pulseMeterPower[MAX_PULSE_COUNTERS];    // Pulse meter power in W per interval
     int grossPowerUsage;                        // Gross usage power in W per interval
     int gasFlow;                                // Gas flow in l per hour
-} Sim_t;
+} sim_t;
 
 
 
@@ -31,14 +31,14 @@ class Simulation
 private:
     Log                 logger {"simulation"};
     static Simulation*  theInstance;
-    static Sim_t        powers[QUARTERS_PER_DAY];
+    static sim_t        powers[QUARTERS_PER_DAY];
     int                 previousPowerIndex;
     Configuration*      config;
     Clock*              clock;
     char                printBuffer[20];
 
     solarTime_t         previousTime;
-    Sim_t               powersCurrent;
+    sim_t               powersCurrent;
     double              powerNetPower;
     double              powerImport;
     double              powerExport;
@@ -54,7 +54,7 @@ private:
 
                         Simulation();
     void                findSimValueByTime(int hour, int minute, int second);
-    void                updateSmartMeterMessage();
+    void                updateSmartMeterMessage(solarTime_t* time);
     void                readSimulatedMeterFile();
     void                writeSimulatedMeterFile();
 

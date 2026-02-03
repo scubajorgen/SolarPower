@@ -41,7 +41,7 @@ private:
     Log                 logger {"pulsecount"};
     Configuration*      configuration;
 
-    PulseMeterUsage_t   meterUsage;                         // Indicates whether pulse meter is a production meter (export) or consumption (import) or not used
+    pulseMeterUsage_t   meterUsage;                         // Indicates whether pulse meter is a production meter (export) or consumption (import) or not used
 
     INT32               maxPower;                           // Maximum power measured during day
     INT32               maxPowerTimeDiff;
@@ -90,7 +90,7 @@ private:
     void                    persistEnergyMeter              ();
 
 public:
-                            PulseCounter                    (int pulseId, PulseMeterUsage_t meterUsage, char* meterFile);
+                            PulseCounter                    (int pulseId, pulseMeterUsage_t meterUsage, char* meterFile);
 
                             ~PulseCounter                   ();
 
@@ -98,7 +98,7 @@ public:
     void                    process                         () override;
 
     void                    startMeasurement                () override;
-    void                    retrieveAndRestartMeasurement   (Measurement_t *measurement) override;
+    void                    retrieveAndRestartMeasurement   (measurement_t *measurement) override;
     int                     getCounterValue                 ();
 
     void                    getCurrentPowerMax              (INT32 *timeDiff, INT32* power, solarTime_t *pulseTime);
@@ -109,6 +109,6 @@ public:
     INT32                   getCurrentExportPower           () override;
 
     bool                    isProductionMeter               ();
-    PulseMeterUsage_t       getMeterUsage                   ();
+    pulseMeterUsage_t       getMeterUsage                   ();
     void                    logStatus                       ();
 };

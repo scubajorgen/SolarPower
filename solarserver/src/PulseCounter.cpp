@@ -272,7 +272,7 @@ void PulseCounter::startMeasurement()
 * Collect the measrured values and restart the measurement
 *
 \******************************************************************************/
-void PulseCounter::retrieveAndRestartMeasurement(Measurement_t *measurement)
+void PulseCounter::retrieveAndRestartMeasurement(measurement_t *measurement)
 {
     measurement->pulse[pulseId]         =currentPulseCounter;
     measurement->pulsePower[pulseId]    =calculateAverageIntervalPower();
@@ -299,7 +299,7 @@ int PulseCounter::getCounterValue()
 * The constructor. Initialises the instance
 *
 \******************************************************************************/
-PulseCounter::PulseCounter(int pulseId, PulseMeterUsage_t meterUsage, char* meterFile)
+PulseCounter::PulseCounter(int pulseId, pulseMeterUsage_t meterUsage, char* meterFile)
 {
     configuration               = Configuration::getInstance();
 
@@ -556,7 +556,7 @@ bool PulseCounter::isProductionMeter()
 * This function indicates how the meter is used
 *
 \******************************************************************************/
-PulseMeterUsage_t PulseCounter::getMeterUsage()
+pulseMeterUsage_t PulseCounter::getMeterUsage()
 {
     return meterUsage;
 }

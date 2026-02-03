@@ -8,7 +8,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION                         "6.1"
+#define VERSION                         "6.2"
 
 // This define defines the interval of measurement in minutes
 // Note: an hour should be dividable by this amount
@@ -46,10 +46,10 @@
 
 // Sample time in microseconds. This is the time between two samples of the pulse
 #define SAMPLE_TIME                     10000
-#define PUBLISHINTERVAL                 2            // interval for websocket publishing in sec
-
 
 #define MAX_PULSE_COUNTERS              3
+
+#define PUBLISHINTERVAL                 2
 
 #define INT8        char
 #define INT16       short
@@ -69,6 +69,6 @@ typedef enum
     USAGE_NOTUSED    =0,
     USAGE_CONSUMPTION=1,
     USAGE_PRODUCTION =2
-} PulseMeterUsage_t;
+} pulseMeterUsage_t;
 
 #endif

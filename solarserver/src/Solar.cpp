@@ -22,7 +22,6 @@
 #include "Scheduler.h"
 #include "Server.h"
 #include "Clock.h"
-#include "Toolbox.h"
 #include "SolarPublish.h"
 #include "SmartMeter.h"
 #include "Configuration.h"
@@ -50,12 +49,9 @@ Configuration   *configuration;
 char            c;
 bool            exitLoop;
 
-char            timeString[256];
-char            optionString[128];
 char            fileName[256];
 
 int             pidFileHandle;
-
 
 /******************************************************************************\
 *
@@ -89,9 +85,7 @@ void initialiseSolar()
     // start the server
     server      =Server::getInstance();
     server->startServer();
-
 }
-
 
 /******************************************************************************\
 *
@@ -121,7 +115,7 @@ void deinitialiseSolar()
 \******************************************************************************/
 void runAsConsoleApplication()
 {
-    Log::setLogLevel(LOGLEVEL_DEBUG);
+    Log::setLogLevel(LOGLEVEL_INFO);
     logger.logInfo("Starting as console app, enter 'quit' to bail out");
     char        userInput[100];
     initialiseSolar();
@@ -200,7 +194,6 @@ void signal_handler(int sig)
             break;
     }
 }
-
 
 /******************************************************************************\
 *

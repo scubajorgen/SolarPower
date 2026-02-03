@@ -3,26 +3,26 @@
 The goal of this project is to monitor the PV system (photovoltaic system or solar system) and monitor energy usage. The project consists of two applications:
 
 * The **solarserver**  
-  This is an application for reading out pulse meters and the NTA8130 Dutch smart meter it stores measurement values in memory for read out by the solarclient application. It also offers the feature of publishing real-time measurements. It is intended for the Raspberry Pi. 
+  This is an application for reading out pulse meters and the NTA8130 Dutch Smart Meter P1 port ([DSMR 5.0](https://www.netbeheernederland.nl/publicatie/dsmr-502-p1-companion-standard)). It stores measurement values in memory for read out by the solarclient application. It also offers the feature of publishing real-time measurements. It is intended for the Raspberry Pi. 
 * The **solarclient**  
   This application connects to the solarserver and downloads the measurement data and stores it in a mysql database. From here, it can be presented e.g. by means of a website or application.
 
 Dependencies are towards [libsockets](https://libwebsockets.org/), [wiringPi](https://github.com/WiringPi/WiringPi) and [rabbitmq-c](https://github.com/alanxz/rabbitmq-c).
 
-**Note: do not expect a production style program with a fancy user interface. It is fully command line driven.**
+**Note: do not expect a production grade program with a fancy user interface. It is fully command line driven.**
 
 ## Architecture
 Next diagram shows the set-up
 
 ![](image/architecture.png)
 
-* The Dutch smart meter measures the net consumption and production of the household
+* The Dutch smart meter measures the net consumption and production of the household and power quality measures (power failues, sags, swells, voltage, etc). Since v6.2 the software reads all smart meter P1 values and store them in the database
 * Up to 3 pulse meters may be used to measure individual production or consumption, e.g. gross production of the solar panels  
   A pulse meter can be configured to measure production or to measure consumption
 * The SolarServer reads out pulse meters and Dutch smart meter every 5 minutes and stores the data in a storage in memory
 * The SolarClient reads out the stored information and stores it in a MySQL database; it initiates the connection for this
 
-The philosophy at the time of creation (2007) was that the SolarServer is always running. The server running SolarClient however may be off-line sometimes for prolonged periods(e.g. during vacations).
+The philosophy at the time of creation (2007) was that the SolarServer is always running, whereas the server running SolarClient may be off-line sometimes for prolonged periods(e.g. during vacations).
 Of course at current state of technology this is not the most logical choice: it would make more sense to have SolarServer upload the measuremement data to a central storage (on premise or in the cloud).
 
 The stored data can be used to feed apps or web pages. For now these are out of scope for this project.
@@ -37,13 +37,15 @@ By that time the NTA8130 Dutch Smart Meter was introduced. Software has been ada
 
 In 2026 the software was updated thoroughly (version 6.0) and put onto [github](https://github.com/scubajorgen/SolarPower) and again made operational for our home with 5500 Wpp solar PV intallation. Current project can be found on [https://energy.studioblueplanet.net](https://energy.studioblueplanet.net).
 
+![](image/meterkast2.jpg)
+The picture above shows the current setup: bottom left the T210-D Smart Meter, mid right the Raspberry Pi in a nice enclosure, in the middle the ABB B23 meter in a enclosure.
 
 ## Prequisites
 During the project the Raspberry Pi Model 1 B+ was used. This page assumes this device. Prerequisite is some kind of interfacing between 
 * the Raspberry Serial port and the P1 port
 * the Raspberry I/O pins and the pulse meter pulse output
 
-Pulse meters should have a pulse width of at least 100 ms. Sample frequency used by the software is 10 milliseconds. Pulse meters should ideally measure energy only in one way. Most pulse meters (like the popular Eastron SMD72D) measure in both directions and generate a pulse for consumption and production. 
+Pulse meters should have a pulse width of at least 100 ms. Sample frequency used by the software is 10 milliseconds. Pulse meters should ideally measure energy only in one way. Most pulse meters (like the popular Eastron SM72D) measure in both directions and generate a pulse for consumption and production. 
 A pulse meter that generates pulses for only one direction is for example the ABB B23. The cheapest version (B23 112–10E) has one pulse output that can be programmed and it generates pulses only in one direction.
 The reason to have unidirectional pulses is that the software calculates gross energy usage (which is net energy usage plus production). PV systems generally have some energy consumption at night time. Having a meter that also generates pulses for consumption disturbsn the gross energy usage calculation.
 

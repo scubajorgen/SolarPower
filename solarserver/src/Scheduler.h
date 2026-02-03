@@ -68,12 +68,12 @@ private:
 
 
     MeasurementStorage* measurementStorage;
-    Measurement_t       measurement;
-    Measurement_t       emptyMeasurement;
-    MaxPower_t          maxPower;
+    measurement_t       measurement;
+    measurement_t       emptyMeasurement;
+    maxPower_t          maxPower;
 
     SmartMeter*         smartMeter;
-    MeterReading_t      meterReading;
+    meterReading_t      meterReading;
 
     SolarPublish*       solarPublish;
 
@@ -96,7 +96,7 @@ public:
     void                    start                           ();
     void                    stop                            ();
 
-    void                    getCurrentPowerMax              (MaxPower_t* maxPower);
+    void                    getCurrentPowerMax              (maxPower_t* maxPower);
     void                    resetCurrentPowerMax            ();
     void                    logStatus                       ();
 };

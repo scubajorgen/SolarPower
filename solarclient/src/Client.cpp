@@ -62,17 +62,17 @@ void Client::syncTime()
     daytime=Clock::getTime();
 
     // convert
-    currentTime.year        =char(daytime->tm_year-100);
-    currentTime.month       =daytime->tm_mon+1;
+    currentTime.year        =char(daytime->tm_year);        // struct tm indicates year since 1900
+    currentTime.month       =daytime->tm_mon+1;             // struct tm counts months from 0
     currentTime.day         =daytime->tm_mday;
     currentTime.hour        =daytime->tm_hour;
     currentTime.minute      =daytime->tm_min;
     currentTime.second      =daytime->tm_sec;
-    currentTime.centisecond =0;                     // yeah, skip the sub second stuff. 1 second accurate is accurate enough
+    currentTime.centisecond =0;                             // yeah, skip the sub second stuff. 1 second accurate is accurate enough
 
     logger.logInfo("Sending: %02d:%02d:%02d %02d-%02d-%04d",
            currentTime.hour, currentTime.minute, currentTime.second,
-           currentTime.day, currentTime.month, 2000+currentTime.year);
+           currentTime.day, currentTime.month, currentTime.year);
 
     // copy to buffer
     sendReceiveBuffer[0]=COMMAND_ADJUSTTIME;
@@ -131,7 +131,7 @@ void Client::requestTime()
         currentTime             =*serverTime;
         logger.logInfo("Local datetime: %02d-%02d-%4d %02d:%02d:%02d Server datetime: %02d-%02d-%04d %02d:%02d:%02d",
                         daytime->tm_mday, daytime->tm_mon+1, daytime->tm_year+1900, daytime->tm_hour, daytime->tm_min, daytime->tm_sec,
-                        currentTime.day, currentTime.month, currentTime.year+2000, currentTime.hour, currentTime.minute, currentTime.second);
+                        currentTime.day, currentTime.month, currentTime.year, currentTime.hour, currentTime.minute, currentTime.second);
     }
     else
     {
@@ -212,7 +212,7 @@ void Client::requestInstantMax()
 
             logger.logInfo("Counter %d: Time %02d-%02d-%04d %02d:%02d:%02d.%02d, power max: dT=%d cs, P=%d Watt",
                             i+1,
-                            maxs.time[i].day, maxs.time[i].month, maxs.time[i].year+2000,
+                            maxs.time[i].day, maxs.time[i].month, maxs.time[i].year,
                             maxs.time[i].hour, maxs.time[i].minute, maxs.time[i].second, maxs.time[i].centisecond,
                             maxs.timeDiff[i],
                             3600*100/maxs.timeDiff[i]*WATTHOUR_PER_KILOWATTHOUR/configuration->getPulsesPerKwh(i));
@@ -286,7 +286,7 @@ bool Client::requestMeasurements()
     connection->sendData(sendReceiveBuffer, 1);
 
     // now wait for an answer and process the answer data
-    int  recordSize                 =sizeof(char)+4*sizeof(INT16)+17*sizeof(INT32)+sizeof(solarTime_t);
+    int  recordSize                 =sizeof(measurement_t)+1;
     bool bailOut                    =false;
     while (!bailOut && !error)
     {
@@ -312,41 +312,15 @@ bool Client::requestMeasurements()
                     if (receiveLength-pointer>=recordSize)
                     {
                         // get the values from the buffer
-                        fiveMinuteMeasurement_t mmt;
-                        int timeIndex;
+                        measurement_t mmt;
+                        mmt                         =*(measurement_t*)(sendReceiveBuffer+pointer+ 1);
+                        int timeIndex               =mmt.timeIndex;
                         int currentTimeIndex;
                         int measurementYear;
                         int day;
                         int month;
                         int hour;
                         int minute;
-
-                        timeIndex                   =*(INT32*)(sendReceiveBuffer+pointer+ 1);
-                        mmt.year                    =*(INT16*)(sendReceiveBuffer+pointer+ 5);
-                        mmt.pulse[0]                =*(INT16*)(sendReceiveBuffer+pointer+ 7);
-                        mmt.pulse[1]                =*(INT16*)(sendReceiveBuffer+pointer+ 9);
-                        mmt.pulse[2]                =*(INT16*)(sendReceiveBuffer+pointer+11);
-                        mmt.pulsePower[0]           =*(INT32*)(sendReceiveBuffer+pointer+13);
-                        mmt.pulsePower[1]           =*(INT32*)(sendReceiveBuffer+pointer+17);
-                        mmt.pulsePower[2]           =*(INT32*)(sendReceiveBuffer+pointer+21);
-                        mmt.pulseMaxPower[0]        =*(INT32*)(sendReceiveBuffer+pointer+25);
-                        mmt.pulseMaxPower[1]        =*(INT32*)(sendReceiveBuffer+pointer+29);
-                        mmt.pulseMaxPower[2]        =*(INT32*)(sendReceiveBuffer+pointer+33);
-                        mmt.pulseMeter[0]           =*(INT32*)(sendReceiveBuffer+pointer+37);
-                        mmt.pulseMeter[1]           =*(INT32*)(sendReceiveBuffer+pointer+41);
-                        mmt.pulseMeter[2]           =*(INT32*)(sendReceiveBuffer+pointer+45);
-
-                        mmt.electricityImportLow    =*(INT32*)(sendReceiveBuffer+pointer+49);
-                        mmt.electricityImportNormal =*(INT32*)(sendReceiveBuffer+pointer+53);
-                        mmt.electricityExportLow    =*(INT32*)(sendReceiveBuffer+pointer+57);
-                        mmt.electricityExportNormal =*(INT32*)(sendReceiveBuffer+pointer+61);
-                        mmt.gasImport               =*(INT32*)(sendReceiveBuffer+pointer+65);
-
-                        mmt.grossPower              =*(INT32*)(sendReceiveBuffer+pointer+69);
-                        mmt.netPower                =*(INT32*)(sendReceiveBuffer+pointer+73);
-
-                        mmt.datetime                =*(solarTime_t*) (sendReceiveBuffer+pointer+77);
-
                         // If the measurement is valid (contains sensible data) store it in the database
                         if (timeIndex>=0)
                         {
@@ -384,21 +358,31 @@ bool Client::requestMeasurements()
                             // If the value has been stored (i.e. it did not already exist in the database) print it.
                             if (!error)
                             {
-                                logger.logInfo("Measurement - Time %d/%d (%02d-%02d-%04d %02d:%02d:%02d.%02d),",
+                                logger.logInfo("Measurement - Time %d/%d (%02d-%02d-%04d %02d:%02d:%02d.%02d) P1: %s,",                         
                                                 mmt.year, mmt.timeIndex,
-                                                mmt.datetime.day, mmt.datetime.month, 2000+mmt.datetime.year,
-                                                mmt.datetime.hour, mmt.datetime.minute, mmt.datetime.second, mmt.datetime.centisecond);
+                                                mmt.datetime.day, mmt.datetime.month, mmt.datetime.year,
+                                                mmt.datetime.hour, mmt.datetime.minute, mmt.datetime.second, mmt.datetime.centisecond,
+                                                mmt.p1Time);
                                 logger.logInfo("              P1 %d (%d/%d Watt, %d Wh), P2 %d (%d/%d Watt, %d Wh), P3 %d (%d/%d Watt, %d Wh), ",
                                                 mmt.pulse[0],mmt.pulsePower[0]/10, mmt.pulseMaxPower[0],mmt.pulseMeter[0],
                                                 mmt.pulse[1],mmt.pulsePower[1]/10, mmt.pulseMaxPower[1],mmt.pulseMeter[1],
                                                 mmt.pulse[2],mmt.pulsePower[2]/10, mmt.pulseMaxPower[2],mmt.pulseMeter[2]);
-                                logger.logInfo("              Eimp low %d Wh, Eimp normal %d Wh, Eexp low %d Wh, Eexp normal %d Wh, Gas %d l",
+                                logger.logInfo("              Eimp low %d Wh, Eimp normal %d Wh, Eexp low %d Wh, Eexp normal %d Wh",
                                                 mmt.electricityImportLow, mmt.electricityImportNormal,
-                                                mmt.electricityExportLow, mmt.electricityExportNormal,
-                                                mmt.gasImport);
-                                logger.logInfo("              Gross power %d W, net power %d W",
-                                                mmt.grossPower/10, mmt.netPower/10);
-
+                                                mmt.electricityExportLow, mmt.electricityExportNormal);
+                                logger.logInfo("              Gross power %d W, net power %d W, Tariff %d",
+                                                mmt.grossPower/10, mmt.netPower/10, mmt.tariff);
+                                logger.logInfo("              Power failues all: %d, long %d, sags: L1 %d L2 %d L3 %d swells L1 %d L2 %d L3 %d",
+                                                mmt.powerFailures, mmt.powerFailuresLong, 
+                                                mmt.sagsL1, mmt.sagsL2, mmt.sagsL3,
+                                                mmt.swellsL1, mmt.swellsL2, mmt.swellsL3);
+                                logger.logInfo("              Voltage          L1 %6d L2 %6d L3 %6d mV Current L1 %6d L2 %6d L3 %6d A",
+                                                    mmt.voltageL1, mmt.voltageL2, mmt.voltageL3,
+                                                    mmt.currentL1, mmt.currentL2, mmt.currentL3);
+                                logger.logInfo("              Act Power Import L1 %6d L2 %6d L3 %6d W  Export  L1 %6d L2 %6d L3 %6d W",
+                                                    mmt.activeImportPowerL1, mmt.activeImportPowerL2, mmt.activeImportPowerL3,
+                                                    mmt.activeExportPowerL1, mmt.activeExportPowerL2, mmt.activeExportPowerL3);
+                                logger.logInfo("              Gas %d l (%s)", mmt.gasImport, mmt.gasTime);
 
                                 // TO DO: Remove
                                 logger.logInfo("CHECK         timeIndex %d %04d-%02d-%02d %02d:%02d",
@@ -740,7 +724,7 @@ void Client::printInstantMaxValues()
     {
         logger.logInfo("Counter %d: Time %02d-%02d-%04d %02d:%02d:%02d.%02d, power max: diff time %d, %d Watt, %d Watt",
                         i+1,
-                        maxs.time[i].day, maxs.time[i].month, maxs.time[i].year+2000,
+                        maxs.time[i].day, maxs.time[i].month, maxs.time[i].year,
                         maxs.time[i].hour, maxs.time[i].minute, maxs.time[i].second, maxs.time[i].centisecond,
                         maxs.timeDiff[i],
                         3600*100/maxs.timeDiff[i]*WATTHOUR_PER_KILOWATTHOUR/configuration->getPulsesPerKwh(i),

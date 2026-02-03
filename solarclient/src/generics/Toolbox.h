@@ -4,45 +4,38 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstdint>
+#include <regex.h>
 
-#include "Clock.h"
+#include "common.h"
+#include "Log.h"
 
-#define MAX_TIME_STRING     25
-#define MAX_MESSAGE_STRING  256
-#define MAX_FILENAME_STRING  256
+#define MAXMATCHSIZE            128
+#define MAXMATCHNUMBER          1       // We expect one match
+#define MAXGROUPNUMBER          1       // We expect one group per match
+#define MAXREGEXERRORMSG        256
+#define APPENDBUFFERSIZE        2048
 
 class Toolbox
 {
 private:
-    static bool         debugPrinting;
-    static bool         infoPrinting;
-    static bool         errorPrinting;
-    static bool         filePrinting;
-    static char         timeString[MAX_TIME_STRING];
-    static char         messageString[MAX_MESSAGE_STRING];
-    static char         logFileName[MAX_FILENAME_STRING];
-
-    static Clock*       clock;
-    
-    static FILE*        fp;
-    
-    
-    static void         outputString(const char* outString);
-    
-
+    static Log          logger;
+    static char         appendBuffer[APPENDBUFFERSIZE];
+    static char         regexErrorMessage[MAXREGEXERRORMSG];
+    static char         matchResult[MAXMATCHSIZE];
 public:
-    static void         printToFile         (bool enable, char* fileName);
-    static void         setDebugPrinting    (bool enable);
-    static void         setInfoPrinting     (bool enable);
-    static void         setErrorPrinting    (bool enable);
-
-    static void         printError          (const char* message);
-    static void         printInfo           (const char* message);
-    static void         printDebug          (const char* message);
-    
-    static void         closeLog            ();
-    
     static  int         convertPulsesToPower(int* pulses, int pulsesPerKiloWattHour);
+
+    static void         stringReset         (char* string);
+    static void         stringAppend        (char* string, const char* message, ...);
+
+    static uint16_t     crc16               (const uint8_t* data, size_t length);
+
+    static void         compileRegex        (regex_t* regex, const char * regexText);
+    static char*        matchRegex          (regex_t* regex, const char* toMatch);
+    static bool         processMatchFloat   (char* message, regex_t* regex, INT32* var, float factor);
+    static bool         processMatchInt     (char* message, regex_t* regex, INT32* var);
+    static bool         processMatchString  (char* message, regex_t* regex, char* var, int length);
 };
 
 #endif

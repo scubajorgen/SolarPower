@@ -14,7 +14,7 @@ PUBLISH = PUBLISH_WEBSOCKETS
 
 VERSION		=6.0
 
-CFLAGS		= -D${PUBLISH} -I. -I./src -I./src/generics -I /usr/include/mysql -I /usr/include/rabbitmq-c -Wall -g -O2 -c -DOSA_POSIX 
+CFLAGS		= -D${PUBLISH} -I./src -I./src/generics -I /usr/include/mysql -I /usr/include/rabbitmq-c -Wall -g -O2 -c -DOSA_POSIX 
 LDFLAGS		= -Wl,-rpath,/usr/local/lib -lstdc++
 PRELIBS		= -L/usr/lib -L /usr/local/lib -L /usr/lib/mysql  -l pthread  -l rt -lwiringPi -lwiringPiDev 
 

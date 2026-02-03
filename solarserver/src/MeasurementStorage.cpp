@@ -2,7 +2,7 @@
 *
 * MeasurementStorage.cpp
 *
-* Storage for measurements and daily maxima
+* Storage for measurements and daily maxima; thead safe
 *
 \**************************************************************************************************/
 #include <stdlib.h>
@@ -13,7 +13,6 @@
 #include "MeasurementStorage.h"
 
 MeasurementStorage* MeasurementStorage::theInstance=NULL;
-
 
 /******************************************************************************\
 * Private methods
@@ -42,9 +41,7 @@ MeasurementStorage::MeasurementStorage()
     // create the mutex
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
-
     err=pthread_mutex_init(&mutex, &attr);
-
     if (err)
     {
         logger.logFatal("Unable to create mutex");
@@ -80,10 +77,8 @@ MeasurementStorage* MeasurementStorage::getInstance()
 \******************************************************************************/
 int MeasurementStorage::getNumberOfMeasurementRecords()
 {
-    int number;
-
     pthread_mutex_lock(&mutex);  
-    number=endOfArray-startOfArray;
+    int number=endOfArray-startOfArray;
     if (number<0)
     {
         number+=MEASUREMENTSTORAGESIZE;
@@ -99,19 +94,15 @@ int MeasurementStorage::getNumberOfMeasurementRecords()
 \******************************************************************************/
 int MeasurementStorage::getNumberOfMaxPowerRecords()
 {
-    int number;
-    
     pthread_mutex_lock(&mutex); 
-    number=maxPowerEndOfArray-maxPowerStartOfArray;
+    int number=maxPowerEndOfArray-maxPowerStartOfArray;
     if (number<0)
     {
         number+=MAXPOWERSTORAGESIZE;
     }
     pthread_mutex_unlock(&mutex);  
-
     return number;
 }
-
 
 /******************************************************************************\
 *
@@ -119,7 +110,7 @@ int MeasurementStorage::getNumberOfMaxPowerRecords()
 * Threadsafe
 *
 \******************************************************************************/
-void MeasurementStorage::appendMeasurement(Measurement_t* measurement)
+void MeasurementStorage::appendMeasurement(measurement_t* measurement)
 {
 
     pthread_mutex_lock(&mutex);  
@@ -151,23 +142,33 @@ void MeasurementStorage::appendMeasurement(Measurement_t* measurement)
             startOfArrayNext=0;
         }
     }
-
     pthread_mutex_unlock(&mutex);  
 
-    logger.logInfo("Measurement - Time %d/%d (%02d-%02d-%04d %02d:%02d:%02d.%02d),",                         
+    logger.logInfo("Measurement - Time %d/%d (%02d-%02d-%04d %02d:%02d:%02d.%02d) P1: %s,",                         
                        measurement->year, measurement->timeIndex,
-                       measurement->datetime.day, measurement->datetime.month, 2000+measurement->datetime.year,
-                       measurement->datetime.hour, measurement->datetime.minute, measurement->datetime.second, measurement->datetime.centisecond);
+                       measurement->datetime.day, measurement->datetime.month, measurement->datetime.year,
+                       measurement->datetime.hour, measurement->datetime.minute, measurement->datetime.second, measurement->datetime.centisecond,
+                       measurement->p1Time);
     logger.logInfo("              P1 %d (%d/%d Watt, %d Wh), P2 %d (%d/%d Watt, %d Wh), P3 %d (%d/%d Watt, %d Wh), ",
                        measurement->pulse[0],measurement->pulsePower[0]/10, measurement->pulseMaxPower[0],measurement->pulseMeter[0],
                        measurement->pulse[1],measurement->pulsePower[1]/10, measurement->pulseMaxPower[1],measurement->pulseMeter[1],
                        measurement->pulse[2],measurement->pulsePower[2]/10, measurement->pulseMaxPower[2],measurement->pulseMeter[2]);
-    logger.logInfo("              Eimp low %d Wh, Eimp normal %d Wh, Eexp low %d Wh, Eexp normal %d Wh, Gas %d l",
+    logger.logInfo("              Eimp low %d Wh, Eimp normal %d Wh, Eexp low %d Wh, Eexp normal %d Wh",
                        measurement->electricityImportLow, measurement->electricityImportNormal,
-                       measurement->electricityExportLow, measurement->electricityExportNormal,
-                       measurement->gasImport);
-    logger.logInfo("              Gross power %d W, net power %d W",
-                       measurement->grossPower/10, measurement->netPower/10);
+                       measurement->electricityExportLow, measurement->electricityExportNormal);
+    logger.logInfo("              Gross power %d W, net power %d W, Tariff %d",
+                       measurement->grossPower/10, measurement->netPower/10, measurement->tariff);
+    logger.logInfo("              Power failues all: %d, long %d, sags: L1 %d L2 %d L3 %d swells L1 %d L2 %d L3 %d",
+                       measurement->powerFailures, measurement->powerFailuresLong, 
+                       measurement->sagsL1, measurement->sagsL2, measurement->sagsL3,
+                       measurement->swellsL1, measurement->swellsL2, measurement->swellsL3);
+    logger.logInfo("              Voltage          L1 %6d L2 %6d L3 %6d mV Current L1 %6d L2 %6d L3 %6d A",
+                        measurement->voltageL1, measurement->voltageL2, measurement->voltageL3,
+                        measurement->currentL1, measurement->currentL2, measurement->currentL3);
+    logger.logInfo("              Act Power Import L1 %6d L2 %6d L3 %6d W  Export  L1 %6d L2 %6d L3 %6d W",
+                        measurement->activeImportPowerL1, measurement->activeImportPowerL2, measurement->activeImportPowerL3,
+                        measurement->activeExportPowerL1, measurement->activeExportPowerL2, measurement->activeExportPowerL3);
+    logger.logInfo("              Gas %d l (%s)", measurement->gasImport, measurement->gasTime);
 }
 
 
@@ -203,24 +204,24 @@ bool MeasurementStorage::purgeRetrievedMeasurements()
 *  This method removes and returns oldest measurement in the buffer
 *
 \******************************************************************************/
-bool MeasurementStorage::getNextMeasurement(Measurement_t* measurement)
+bool MeasurementStorage::getNextMeasurement(measurement_t* measurement)
 {
     bool error=false;
+    pthread_mutex_lock(&mutex); 
     if (startOfArrayNext!=endOfArray)
     {
-        pthread_mutex_lock(&mutex); 
         *measurement=measurements[startOfArrayNext];
         startOfArrayNext++;
         if (startOfArrayNext>=MEASUREMENTSTORAGESIZE)
         {
             startOfArrayNext-=MEASUREMENTSTORAGESIZE;
         }
-        pthread_mutex_unlock(&mutex); 
     }
     else
     {
         error=true;
     }
+    pthread_mutex_unlock(&mutex); 
     return error;
 }
 
@@ -229,10 +230,9 @@ bool MeasurementStorage::getNextMeasurement(Measurement_t* measurement)
 * Add a measurement to the measurement array
 *
 \******************************************************************************/
-void MeasurementStorage::appendMaxPower(MaxPower_t* maxPower)
+void MeasurementStorage::appendMaxPower(maxPower_t* maxPower)
 {
     pthread_mutex_lock(&mutex); 
-
     // append the current pulsecounter to end of the measurement array
     maxPowers[maxPowerEndOfArray]   =*maxPower;
 
@@ -297,24 +297,24 @@ bool MeasurementStorage::purgeRetrievedPowerMaxValues()
 *  This method removes and returns oldest max power from the buffer
 *
 \******************************************************************************/
-bool MeasurementStorage::getNextPowerMaxValue(MaxPower_t* maxPower)
+bool MeasurementStorage::getNextPowerMaxValue(maxPower_t* maxPower)
 {
     bool error=false;
+    pthread_mutex_lock(&mutex); 
     if (maxPowerStartOfArrayNext!=maxPowerEndOfArray)
     {
-        pthread_mutex_lock(&mutex); 
         *maxPower=maxPowers[maxPowerStartOfArrayNext];
         maxPowerStartOfArrayNext++;
         if (maxPowerStartOfArrayNext>=MAXPOWERSTORAGESIZE)
         {
             maxPowerStartOfArrayNext-=MAXPOWERSTORAGESIZE;
         }
-        pthread_mutex_unlock(&mutex); 
     }
     else
     {
         error=true;
     }
+    pthread_mutex_unlock(&mutex); 
     return error;
 }
 

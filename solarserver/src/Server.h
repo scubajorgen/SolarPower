@@ -29,7 +29,7 @@
 ******************************************************************************/
 #define SERVER_PORT                   8002
 #define RECVQUEUE                      100  /*character recv queue size*/
-#define SENDQUEUE                      100
+#define SENDQUEUE                      256
 #define TASK_STACKSIZE                1024  /*Words*/
 
 typedef enum
@@ -76,11 +76,11 @@ class Server
 
     Scheduler*          scheduler;
     SmartMeter*         smartMeter;
-    MeterReading_t      reading;
+    meterReading_t      reading;
 
     MeasurementStorage* measurementStorage;
-    Measurement_t       measurement;
-    MaxPower_t          maxPower;
+    measurement_t       measurement;
+    maxPower_t          maxPower;
 
     int                 serverPort;
 
@@ -106,8 +106,7 @@ private:
 
 
     // Helpers
-    void                sendMeasurement             (int socket, Measurement_t measurement);
-    void                sendInstantMaxPower         (int socket, MaxPower_t    maxPower);
+    void                sendInstantMaxPower         (int socket, maxPower_t    maxPower);
 
     // Responders
     void                calibratePulseCounters      (int socket, char* data, int dataLength);

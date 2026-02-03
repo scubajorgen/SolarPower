@@ -298,7 +298,7 @@ void Scheduler::storeAndResetMaxPowerValues()
 void Scheduler::measureStateMachine()
 {
     solarClock->getTime(&pulseTime);
-    year=pulseTime.year+2000;
+    year=pulseTime.year;
 
     switch (measureState)
     {
@@ -469,7 +469,7 @@ void Scheduler::stop()
 *  between two adjacent pulses
 *
 \******************************************************************************/
-void Scheduler::getCurrentPowerMax(MaxPower_t* maxPower)
+void Scheduler::getCurrentPowerMax(maxPower_t* maxPower)
 {
     int i;
 
@@ -513,7 +513,7 @@ void Scheduler::logStatus()
     logger.logReport("____________________ STATUS ____________________");
     logger.logReport("SolarServer version %s", VERSION);
     logger.logReport("Scheduler started %02d-%02d-%04d %02d:%02d:%02d GMT",
-                    schedulerStartTime.day, schedulerStartTime.month, schedulerStartTime.year+2000, 
+                    schedulerStartTime.day, schedulerStartTime.month, schedulerStartTime.year, 
                     schedulerStartTime.hour, schedulerStartTime.minute, schedulerStartTime.second);
     smartMeter->logStatus();
     for(int i=0; i<MAX_PULSE_COUNTERS; i++)

@@ -139,7 +139,6 @@ Server::Server()
     measurementStorage=MeasurementStorage::getInstance();
 }
 
-
 /******************************************************************************
 * Disable nagle
 ******************************************************************************/
@@ -232,7 +231,6 @@ void Server::processCommand(int socket, char* data, int blockSize)
         default:
             logger.logError("COMMAND: unknown command %d", command);
             break;
-
         }
     }
 }
@@ -252,7 +250,6 @@ void Server::calibratePulseCounters (int socket, char* data, int dataLength)
         configuration->setPulsesPerKwh(0, *(INT32*)(data  ));
         configuration->setPulsesPerKwh(1, *(INT32*)(data+4));
         configuration->setPulsesPerKwh(2, *(INT32*)(data+8));
-
         sendBuffer[0]=COMMAND_ACK;
         send(socket, sendBuffer, 1, 0);
     }
@@ -286,17 +283,10 @@ void Server::synchroniseTime(int socket, char* timeData, int dataLength)
 \******************************************************************************/
 void Server::sendTime (int socket)
 {
-    Clock*          clock;
-    solarTime_t*    timePtr;
-
-    clock           =Clock::getInstance();
+    Clock*          clock           =Clock::getInstance();
     clock->getTime(&solarTime);
-
-    timePtr         =(solarTime_t*)(sendBuffer+1);
-    *timePtr        =solarTime;
-
-
-    sendBuffer[0]   =COMMAND_RECEIVETIME;
+    *(solarTime_t*)(sendBuffer+1)   =solarTime;
+    sendBuffer[0]                   =COMMAND_RECEIVETIME;
     send(socket, sendBuffer, 1+sizeof(solarTime_t), 0);
 }
 
@@ -305,48 +295,7 @@ void Server::sendTime (int socket)
 * This method writes a measurement into the send buffer
 *
 \******************************************************************************/
-void Server::sendMeasurement(int socket, Measurement_t measurement)
-{
-    // send each measurment as a separate TCP block
-
-    sendBuffer[0]                   =COMMAND_RECEIVEDATA;
-    int  recordSize                 =sizeof(char)+4*sizeof(INT16)+17*sizeof(INT32)+sizeof(solarTime_t);
-    *(INT32*)(sendBuffer+ 1)        =measurement.timeIndex;
-    *(INT16*)(sendBuffer+ 5)        =measurement.year;
-    *(INT16*)(sendBuffer+ 7)        =measurement.pulse[0];
-    *(INT16*)(sendBuffer+ 9)        =measurement.pulse[1];
-    *(INT16*)(sendBuffer+11)        =measurement.pulse[2];
-    *(INT32*)(sendBuffer+13)        =measurement.pulsePower[0];
-    *(INT32*)(sendBuffer+17)        =measurement.pulsePower[1];
-    *(INT32*)(sendBuffer+21)        =measurement.pulsePower[2];
-    *(INT32*)(sendBuffer+25)        =measurement.pulseMaxPower[0];
-    *(INT32*)(sendBuffer+29)        =measurement.pulseMaxPower[1];
-    *(INT32*)(sendBuffer+33)        =measurement.pulseMaxPower[2];
-    *(INT32*)(sendBuffer+37)        =measurement.pulseMeter[0];
-    *(INT32*)(sendBuffer+41)        =measurement.pulseMeter[1];
-    *(INT32*)(sendBuffer+45)        =measurement.pulseMeter[2];
-
-    *(INT32*)(sendBuffer+49)        =measurement.electricityImportLow;
-    *(INT32*)(sendBuffer+53)        =measurement.electricityImportNormal;
-    *(INT32*)(sendBuffer+57)        =measurement.electricityExportLow;
-    *(INT32*)(sendBuffer+61)        =measurement.electricityExportNormal;
-    *(INT32*)(sendBuffer+65)        =measurement.gasImport;
-
-    *(INT32*)(sendBuffer+69)        =measurement.grossPower;
-    *(INT32*)(sendBuffer+73)        =measurement.netPower;
-
-    *(solarTime_t*)(sendBuffer+77)  =measurement.datetime;
-
-    send(socket, sendBuffer, recordSize, 0);
-}
-
-
-/******************************************************************************\
-*
-* This method writes a measurement into the send buffer
-*
-\******************************************************************************/
-void Server::sendInstantMaxPower(int socket, MaxPower_t maxPower)
+void Server::sendInstantMaxPower(int socket, maxPower_t maxPower)
 {
     // send each measurment as a separate TCP block
     // C T1 T1 T1 T1 P1 P1 P1 P1 I1 I1 I1 I1 I1 I1 I1 
@@ -383,7 +332,6 @@ void Server::sendInstantMax(int socket)
     sendInstantMaxPower(socket, maxPower);
 }
 
-
 /******************************************************************************\
 *
 * This method resets the instant power maximum value
@@ -397,8 +345,6 @@ void Server::resetInstantMax(int socket)
     // send an acknowledge
     sendBuffer[0]=COMMAND_ACK;
     send(socket, sendBuffer, 1, 0);
-
-
 }
 
 /******************************************************************************\
@@ -536,7 +482,11 @@ void Server::transferMeasurements(int socket)
         error=measurementStorage->getNextMeasurement(&measurement);
         if (!error)
         {
-            sendMeasurement(socket, measurement);
+            // send each measurment as a separate TCP block
+            sendBuffer[0]                   =COMMAND_RECEIVEDATA;
+            *(measurement_t*)(sendBuffer+1) =measurement;
+            int recordSize                  =sizeof(measurement_t)+1;
+            send(socket, sendBuffer, recordSize, 0);
 
             // very, very dirty work around to limit the
             // packet size that is being sent (or received at the client side):

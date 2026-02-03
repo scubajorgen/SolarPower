@@ -1,59 +1,66 @@
-CREATE DATABASE energy;
+/**************************************************************************************************\
+*
+* createdb.sql
+*
+* Creates the required database. MySql/MariaDB
+*
+\**************************************************************************************************/
 
-USE energy;
+-- CREATE DATABASE energy;
+-- USE energy;
 
 CREATE TABLE energybill 
 (
   ix                      int(11) AUTO_INCREMENT PRIMARY KEY,
-  date                    datetime,
-  emeter1                 double,
-  emeter1_offset          double,
-  emeter2                 double,
-  emeter2_offset          double,
-  emeter3                 double,
-  emeter3_offset          double,
-  emeter4                 double,
-  emeter4_offset          double,
-  solarmeter              double,
-  solarmeter_offset       double,
-  uchpproduction          double,
-  uchpproduction_offset   double,
-  uchpconsumption         double,
-  uchpconsumption_offset  double,
-  ebill                   double,
-  gasmeter                double,
-  gasmeter_offset         double,
-  gasbill                 double,
-  graaddagen              double,
-  watermeter              double,
-  watermeter_offset       double,
-  waterbill               double,
-  remarks                 text
+  date                    DATETIME,
+  emeter1                 DOUBLE,
+  emeter1_offset          DOUBLE,
+  emeter2                 DOUBLE,
+  emeter2_offset          DOUBLE,
+  emeter3                 DOUBLE,
+  emeter3_offset          DOUBLE,
+  emeter4                 DOUBLE,
+  emeter4_offset          DOUBLE,
+  solarmeter              DOUBLE,
+  solarmeter_offset       DOUBLE,
+  uchpproduction          DOUBLE,
+  uchpproduction_offset   DOUBLE,
+  uchpconsumption         DOUBLE,
+  uchpconsumption_offset  DOUBLE,
+  ebill                   DOUBLE,
+  gasmeter                DOUBLE,
+  gasmeter_offset         DOUBLE,
+  gasbill                 DOUBLE,
+  graaddagen              DOUBLE,
+  watermeter              DOUBLE,
+  watermeter_offset       DOUBLE,
+  waterbill               DOUBLE,
+  remarks                 TEXT
 );
 
 CREATE TABLE meterreadings 
 (
   ix                      int(11) AUTO_INCREMENT PRIMARY KEY,
-  date                    datetime,
-  emeter1                 double,
-  emeter1_offset          double,
-  emeter2                 double,
-  emeter2_offset          double,
-  emeter3                 double,
-  emeter3_offset          double,
-  emeter4                 double,
-  emeter4_offset          double,
-  solarmeter              double,
-  solarmeter_offset       double,
-  gasmeter                double,
-  gasmeter_offset         double,
-  watermeter              double,
-  watermeter_offset       double,
-  uchpproduction          double,
-  uchpproduction_offset   double,
-  uchpconsumption         double,
-  uchpconsumption_offset  double,
-  remarks                 text
+  date                    DATETIME,
+  emeter1                 DOUBLE,
+  emeter1_offset          DOUBLE,
+  emeter2                 DOUBLE,
+  emeter2_offset          DOUBLE,
+  emeter3                 DOUBLE,
+  emeter3_offset          DOUBLE,
+  emeter4                 DOUBLE,
+  emeter4_offset          DOUBLE,
+  solarmeter              DOUBLE,
+  solarmeter_offset       DOUBLE,
+  gasmeter                DOUBLE,
+  gasmeter_offset         DOUBLE,
+  watermeter              DOUBLE,
+  watermeter_offset       DOUBLE,
+  uchpproduction          DOUBLE,
+  uchpproduction_offset   DOUBLE,
+  uchpconsumption         DOUBLE,
+  uchpconsumption_offset  DOUBLE,
+  remarks                 TEXT
 );
 
 
@@ -62,58 +69,81 @@ CREATE TABLE solarenergyday
   ix                      int(11) AUTO_INCREMENT PRIMARY KEY,
   date                    datetime,
 
-  energy1                 double,
-  maxpower1               double,
-  maxpowerindex1          int(11),
-  instantmaxpower1        double,
+  energy1                 DOUBLE,
+  maxpower1               DOUBLE,
+  maxpowerindex1          INT,
+  instantmaxpower1        DOUBLE,
   instantmaxpowertime1    time,
 
-  minutesactive1          int(11),
-  energy2                 double,
-  maxpower2               double,
-  maxpowerindex2          int(11),
-  instantmaxpower2        double,
+  minutesactive1          INT,
+  energy2                 DOUBLE,
+  maxpower2               DOUBLE,
+  maxpowerindex2          INT,
+  instantmaxpower2        DOUBLE,
   instantmaxpowertime2    time,
-  minutesactive2          int(11),
+  minutesactive2          INT,
 
-  energy3                 double,
-  maxpower3               double,
-  maxpowerindex3          int(11),
-  instantmaxpower3        double,
-  instantmaxpowertime3    time,
-  minutesactive3       	  int(11)
+  energy3                 DOUBLE,
+  maxpower3               DOUBLE,
+  maxpowerindex3          INT,
+  instantmaxpower3        DOUBLE,
+  instantmaxpowertime3    TIME,
+  minutesactive3       	  INT
 );
 
 CREATE TABLE solarenergyfiveminutes
 (
   ix                      int(11) AUTO_INCREMENT PRIMARY KEY,
   datetime                datetime,
-  timeindex               int(32),
-  year                    int(16),
-  pulse1                  int(16),
-  pulsepower1             int(32),
-  pulsemaxpower1          int(32),
-  pulsemeter1             int(32),
-  pulse2                  int(16),
-  pulsepower2             int(32),
-  pulsemaxpower2          int(32),
-  pulsemeter2             int(32),
-  pulse3                  int(16),
-  pulsepower3             int(32),
-  pulsemaxpower3          int(32),
-  pulsemeter3             int(32),
-  electricityimportlow    int(32),
-  electricityimportnormal int(32),
-  electricityexportlow    int(32),
-  electricityexportnormal int(32),
-  gasimport               int(32),
-  grosspower              int(32),
-  netpower                int(32)
+  timeindex               INT,
+  year                    INT,
+  pulse1                  INT,
+  pulsepower1             INT,
+  pulsemaxpower1          INT,
+  pulsemeter1             INT,
+  pulse2                  INT,
+  pulsepower2             INT,
+  pulsemaxpower2          INT,
+  pulsemeter2             INT,
+  pulse3                  INT,
+  pulsepower3             INT,
+  pulsemaxpower3          INT,
+  pulsemeter3             INT,
+  p1time                  CHAR(20),
+  electricityimportlow    INT,
+  electricityimportnormal INT,
+  electricityexportlow    INT,
+  electricityexportnormal INT,
+  tariff                  INT,
+  powerfailures           INT,
+  powerfailureslong       INT,
+  sagsl1                  INT,
+  sagsl2                  INT,
+  sagsl3                  INT,
+  swellsl1                INT,
+  swellsl2                INT,
+  swellsl3                INT,
+  voltagel1               INT,
+  voltagel2               INT,
+  voltagel3               INT,
+  currentl1               INT,
+  currentl2               INT,
+  currentl3               INT,
+  actpowerimportl1        INT,
+  actpowerimportl2        INT,
+  actpowerimportl3        INT,
+  actpowerexportl1        INT,
+  actpowerexportl2        INT,
+  actpowerexportl3        INT,
+  grosspower              INT,
+  netpower                INT,
+  gasimport               INT,
+  gastime                 CHAR(20)
 );
 
 
 ALTER TABLE solarenergyfiveminutes ADD UNIQUE INDEX dbtimeindex (year, timeindex);
-ALTER TABLE solarenergyday ADD UNIQUE INDEX dbtimeindex (date);
+ALTER TABLE solarenergyday         ADD UNIQUE INDEX dbtimeindex (date);
 
 
 

@@ -9,14 +9,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cstdint>
 
 #include "Configuration.h"
 #include "Simulation.h"
+#include "Toolbox.h"
 
 Simulation* Simulation::theInstance=NULL;
 
 // Simulated powers, per quarter of an hour
-Sim_t Simulation::powers[QUARTERS_PER_DAY]=
+sim_t Simulation::powers[QUARTERS_PER_DAY]=
 {
     {0, 0, 0, {0, 100, 200}, 600, 500},
     {0, 15, 0, {0, 100, 200}, 600, 500},
@@ -115,47 +117,90 @@ Sim_t Simulation::powers[QUARTERS_PER_DAY]=
     {23, 30, 0, {0, 100, 200}, 700, 500},
     {23, 45, 0, {0, 100, 200}, 700, 500}
 };
-
+/*
+// original P1 message, recorded
 char Simulation::simulationReading[]=
-                "/Ene5\\T210-D ESMR5.0\n"
-                "\n"
-                "1-3:0.2.8(50)\n"
-                "0-0:1.0.0(260103085949W)\n"
-                "0-0:96.1.1(4530303438303030303238353430383138)\n"
-                "1-0:1.8.1(009645.859*kWh)\n"
-                "1-0:1.8.2(009196.033*kWh)\n"
-                "1-0:2.8.1(006595.405*kWh)\n"
-                "1-0:2.8.2(014587.408*kWh)\n"
-                "0-0:96.14.0(0001)\n"
-                "1-0:1.7.0(00.762*kW)\n"
-                "1-0:2.7.0(00.000*kW)\n"
-                "0-0:96.7.21(01063)\n"
-                "0-0:96.7.9(00026)\n"
-                "1-0:99.97.0(8)(0-0:96.7.19)(250828124710S)(0000011426*s)(221017143729S)(0000004864*s)(220521164328S)(0000005946*s)(201020103607S)"
-                "(0000003494*s)(200216132044W)(0000013110*s)(200216093038W)(0000027019*s)(191111115906W)(0000003380*s)(190612174024S)(0000008060*s)\n"
-                "1-0:32.32.0(00009)\n"
-                "1-0:52.32.0(00010)\n"
-                "1-0:72.32.0(00010)\n"
-                "1-0:32.36.0(00000)\n"
-                "1-0:52.36.0(00000)\n"
-                "1-0:72.36.0(00000)\n"
-                "0-0:96.13.0()\n"
-                "1-0:32.7.0(228.0*V)\n"
-                "1-0:52.7.0(228.0*V)\n"
-                "1-0:72.7.0(230.0*V)\n"
-                "1-0:31.7.0(000*A)\n"
-                "1-0:51.7.0(002*A)\n"
-                "1-0:71.7.0(000*A)\n"
-                "1-0:21.7.0(00.120*kW)\n"
-                "1-0:41.7.0(00.562*kW)\n"
-                "1-0:61.7.0(00.079*kW)\n"
-                "1-0:22.7.0(00.000*kW)\n"
-                "1-0:42.7.0(00.000*kW)\n"
-                "1-0:62.7.0(00.000*kW)\n"
-                "0-1:24.1.0(003)\n"
-                "0-1:96.1.0(4730303732303034303539333133373230)\n"
-                "0-1:24.2.1(260103085500W)(04717.700*m3)\n"
-                "!09D9";
+"/Ene5\\T210-D ESMR5.0\r\n"
+"\r\n"
+"1-3:0.2.8(50)\r\n"
+"0-0:1.0.0(260128120409W)\r\n"
+"0-0:96.1.1(4530303438303030303238353430383138)\r\n"
+"1-0:1.8.1(009774.917*kWh)\r\n"
+"1-0:1.8.2(009337.324*kWh)\r\n"
+"1-0:2.8.1(006599.138*kWh)\r\n"
+"1-0:2.8.2(014602.769*kWh)\r\n"
+"0-0:96.14.0(0002)\r\n"
+"1-0:1.7.0(00.265*kW)\r\n"
+"1-0:2.7.0(00.000*kW)\r\n"
+"0-0:96.7.21(01063)\r\n"
+"0-0:96.7.9(00026)\r\n"
+"1-0:99.97.0(8)(0-0:96.7.19)(250828124710S)(0000011426*s)(221017143729S)(0000004864*s)(220521164328S)(0000005946*s)(201020103607S)"
+"(0000003494*s)(200216132044W)(0000013110*s)(200216093038W)(0000027019*s)(191111115906W)(0000003380*s)(190612174024S)(0000008060*s)\r\n"
+"1-0:32.32.0(00009)\r\n"
+"1-0:52.32.0(00010)\r\n"
+"1-0:72.32.0(00010)\r\n"
+"1-0:32.36.0(00000)\r\n"
+"1-0:52.36.0(00000)\r\n"
+"1-0:72.36.0(00000)\r\n"
+"0-0:96.13.0()\r\n"
+"1-0:32.7.0(224.0*V)\r\n"
+"1-0:52.7.0(229.0*V)\r\n"
+"1-0:72.7.0(224.0*V)\r\n"
+"1-0:31.7.0(000*A)\r\n"
+"1-0:51.7.0(001*A)\r\n"
+"1-0:71.7.0(000*A)\r\n"
+"1-0:21.7.0(00.100*kW)\r\n"
+"1-0:41.7.0(00.115*kW)\r\n"
+"1-0:61.7.0(00.049*kW)\r\n"
+"1-0:22.7.0(00.000*kW)\r\n"
+"1-0:42.7.0(00.000*kW)\r\n"
+"1-0:62.7.0(00.000*kW)\r\n"
+"0-1:24.1.0(003)\r\n"
+"0-1:96.1.0(4730303732303034303539333133373230)\r\n"
+"0-1:24.2.1(260128120000W)(04994.910*m3)\r\n"
+"!9147\r\n";
+*/
+// Artifical, for testing
+char Simulation::simulationReading[]=
+"/Ene5\\T210-D ESMR5.0\r\n"
+"\r\n"
+"1-3:0.2.8(50)\r\n"
+"0-0:1.0.0(260128120409W)\r\n"
+"0-0:96.1.1(4530303438303030303238353430383138)\r\n"
+"1-0:1.8.1(000100.111*kWh)\r\n"
+"1-0:1.8.2(000200.222*kWh)\r\n"
+"1-0:2.8.1(000300.333*kWh)\r\n"
+"1-0:2.8.2(000400.444*kWh)\r\n"
+"0-0:96.14.0(0002)\r\n"
+"1-0:1.7.0(00.340*kW)\r\n"
+"1-0:2.7.0(00.100*kW)\r\n"
+"0-0:96.7.21(11111)\r\n"
+"0-0:96.7.9(22222)\r\n"
+"1-0:99.97.0(8)(0-0:96.7.19)(250828124710S)(0000011426*s)(221017143729S)(0000004864*s)(220521164328S)(0000005946*s)(201020103607S)"
+"(0000003494*s)(200216132044W)(0000013110*s)(200216093038W)(0000027019*s)(191111115906W)(0000003380*s)(190612174024S)(0000008060*s)\r\n"
+"1-0:32.32.0(00009)\r\n"
+"1-0:52.32.0(00010)\r\n"
+"1-0:72.32.0(00011)\r\n"
+"1-0:32.36.0(00012)\r\n"
+"1-0:52.36.0(00013)\r\n"
+"1-0:72.36.0(00014)\r\n"
+"0-0:96.13.0()\r\n"
+"1-0:32.7.0(224.0*V)\r\n"
+"1-0:52.7.0(225.0*V)\r\n"
+"1-0:72.7.0(226.0*V)\r\n"
+"1-0:31.7.0(001*A)\r\n"
+"1-0:51.7.0(002*A)\r\n"
+"1-0:71.7.0(003*A)\r\n"
+"1-0:21.7.0(00.100*kW)\r\n"
+"1-0:41.7.0(00.115*kW)\r\n"
+"1-0:61.7.0(00.125*kW)\r\n"
+"1-0:22.7.0(00.010*kW)\r\n"
+"1-0:42.7.0(00.020*kW)\r\n"
+"1-0:62.7.0(00.070*kW)\r\n"
+"0-1:24.1.0(003)\r\n"
+"0-1:96.1.0(4730303732303034303539333133373230)\r\n"
+"0-1:24.2.1(260128120000W)(04994.910*m3)\r\n"
+"!4A64\r\n";
 
 /******************************************************************************\
 *
@@ -241,7 +286,7 @@ void Simulation::process()
     }
 
     volumeGas               +=powersCurrent.gasFlow*secondsPassed/SECONDS_PER_HOUR/LITER_PER_M3;
-    updateSmartMeterMessage();
+    updateSmartMeterMessage(&currentTime);
 
     previousTime            =currentTime;
     //dumpCurrentPowersAndEnergies();
@@ -315,27 +360,38 @@ void Simulation::findSimValueByTime(int hour, int minute, int second)
 * This function fills in the right values in the smart meter message
 *
 \******************************************************************************/
-void Simulation::updateSmartMeterMessage()
+void Simulation::updateSmartMeterMessage(solarTime_t* time)
 {
+    sprintf(printBuffer, "%02d%02d%02d%02d%02d%02d", time->year%100, time->month, time->day, time->hour, time->minute, time->second);
+    memcpy(simulationReading+49, printBuffer, 12);
+    
     sprintf(printBuffer, "%06.3f", powerImport/WATT_PER_KILOWATT);
-    memcpy(simulationReading+240, printBuffer, 6);
+    memcpy(simulationReading+250, printBuffer, 6);
     sprintf(printBuffer, "%06.3f", powerExport/WATT_PER_KILOWATT);
-    memcpy(simulationReading+261, printBuffer, 6);
+    memcpy(simulationReading+272, printBuffer, 6);
 
     sprintf(printBuffer, "%010.3f", energyImportNormal);
-    memcpy(simulationReading+144, printBuffer, 10);
+    memcpy(simulationReading+150, printBuffer, 10);
 
     sprintf(printBuffer, "%010.3f", energyImportLow   );
-    memcpy(simulationReading+118, printBuffer, 10);
+    memcpy(simulationReading+123, printBuffer, 10);
 
     sprintf(printBuffer, "%010.3f", energyExportNormal);
-    memcpy(simulationReading+196, printBuffer, 10);
+    memcpy(simulationReading+204, printBuffer, 10);
 
     sprintf(printBuffer, "%010.3f", energyExportLow   );
-    memcpy(simulationReading+170, printBuffer, 10);
+    memcpy(simulationReading+177, printBuffer, 10);
 
     sprintf(printBuffer, "%09.3f", volumeGas   );
-    memcpy(simulationReading+1032, printBuffer, 9);
+    memcpy(simulationReading+1068, printBuffer, 9);
+
+    // Compute CRC over everything before '!'
+    char* start             = strchr(simulationReading, '/');
+    char* end               = strchr(simulationReading, '!');
+    end++;
+    size_t dataLen         = (size_t)(end - start);
+    uint16_t computedCrc    = Toolbox::crc16((const uint8_t*)start, dataLen);
+    sprintf(end, "%04x\r\n", computedCrc);
 }
 
 /******************************************************************************\

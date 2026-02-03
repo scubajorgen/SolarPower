@@ -1,25 +1,26 @@
 /******************************************************************************\
 *
 * SmartMeter.cpp
-* Readout for the P1 port of the smart meter
+* Readout for the P1 port of the smart meter. The class is not thread safe.
 *
 \******************************************************************************/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <termios.h>
 #include <errno.h>
 #include <regex.h>
+#include <cstdint>
+#include <termios.h>
+#include "wiringSerial.h"
+#include "wiringPi.h"
 
 #include "SmartMeter.h"
 #include "Configuration.h"
 #include "common.h"
-#include "wiringSerial.h"
-#include "wiringPi.h"
+#include "Toolbox.h"
 
 SmartMeter* SmartMeter::theInstance=NULL;
-
 
 /******************************************************************************\
 * Friend methods
@@ -53,7 +54,10 @@ SmartMeter::SmartMeter()
     serialPortResetCounter                  =0;
     messageIndex                            =0;
     messageCount                            =0L;
+    receiveState                            =RECEIVESTATE_IDLE;
     parseErrors                             =0;
+    validationErrors                        =0;
+
     Configuration* conf                     =Configuration::getInstance();
     simulationMode                          =conf->getSimulationMode();
     if (simulationMode)
@@ -66,7 +70,6 @@ SmartMeter::SmartMeter()
         simCounter                          =SIMULATION_INTERVALS;
         serialPortEnable                    =true;
         serialPortResetCounter              =1;
-
     }
     else
     {
@@ -99,17 +102,17 @@ bool SmartMeter::initializeSerialPort()
 {
     struct termios  options ;
 
-    serialPortEnable                    =true;
-    bool                        error   =false;
+    serialPortEnable       =true;
+    bool  error            =false;
     // Get the configured serial port setting
-    Configuration* config               =Configuration::getInstance();
-    char* device                        =config->getSerialPortDevice();
-    int baudrate                        =config->getSerialBaudrate();
-    int invertPin                       =config->getSerialGpioInvert();
-    int invert                          =config->getSerialInvert();
-    int bits                            =config->getSerialBits();
-    int stopBits                        =config->getSerialStopBits();
-    int parity                          =config->getSerialParity();
+    Configuration* config  =Configuration::getInstance();
+    char* device           =config->getSerialPortDevice();
+    int baudrate           =config->getSerialBaudrate();
+    int invertPin          =config->getSerialGpioInvert();
+    int invert             =config->getSerialInvert();
+    int bits               =config->getSerialBits();
+    int stopBits           =config->getSerialStopBits();
+    int parity             =config->getSerialParity();
 
     // Set signal inversion, if required
     pinMode(invertPin, OUTPUT);
@@ -123,9 +126,10 @@ bool SmartMeter::initializeSerialPort()
     }
 
     // Configure the serial port
-    skipFirstMessage        =true;
     firstMessageProcessed   =false;
-    serial=serialOpen(device, baudrate);
+    messageIndex            =0;
+    receiveState            =RECEIVESTATE_MESSAGE;
+    serial                  =serialOpen(device, baudrate);
     serialFlush(serial);
     if (serial>=0)
     {
@@ -196,28 +200,43 @@ bool SmartMeter::initializeSerialPort()
 
 /******************************************************************************\
 *
-* Setup the serial port
+* Initialize the regular expressions that are used to extract info from P1
+* datagram
 *
 \******************************************************************************/
 void SmartMeter::initializeRegexp()
 {
     Configuration* config   =Configuration::getInstance();
-    char*          regexp;
-
-    regexp=config->getImportLowKwhRegexp();
-    compileRegex (&importLowKwh, regexp);
-    regexp=config->getImportHighKwhRegexp();
-    compileRegex (&importHighKwh, regexp);
-    regexp=config->getExportLowKwhRegexp();
-    compileRegex (&exportLowKwh, regexp);
-    regexp=config->getExportHighKwhRegexp();
-    compileRegex (&exportHighKwh, regexp);
-    regexp=config->getImportKwRegexp();
-    compileRegex (&importKw, regexp);
-    regexp=config->getExportKwRegexp();
-    compileRegex (&exportKw, regexp);
-    regexp=config->getGasRegexp();
-    compileRegex (&gas, regexp);
+    Toolbox::compileRegex (&regexTime               , config->getTimeRegexp());
+    Toolbox::compileRegex (&regexImportLowKwh       , config->getImportLowKwhRegexp());
+    Toolbox::compileRegex (&regexImportHighKwh      , config->getImportHighKwhRegexp());
+    Toolbox::compileRegex (&regexExportLowKwh       , config->getExportLowKwhRegexp());
+    Toolbox::compileRegex (&regexExportHighKwh      , config->getExportHighKwhRegexp());
+    Toolbox::compileRegex (&regexTariff             , config->getTariffRegexp());
+    Toolbox::compileRegex (&regexImportKw           , config->getImportKwRegexp());
+    Toolbox::compileRegex (&regexExportKw           , config->getExportKwRegexp());
+    Toolbox::compileRegex (&regexPowerFailures      , config->getPowerFailuresRegexp());
+    Toolbox::compileRegex (&regexPowerFailuresLong  , config->getLongPowerFailuresRegexp());
+    Toolbox::compileRegex (&regexSagsL1             , config->getSagsL1Regexp());
+    Toolbox::compileRegex (&regexSagsL2             , config->getSagsL2Regexp());
+    Toolbox::compileRegex (&regexSagsL3             , config->getSagsL3Regexp());
+    Toolbox::compileRegex (&regexSwellsL1           , config->getSwellsL1Regexp());
+    Toolbox::compileRegex (&regexSwellsL2           , config->getSwellsL2Regexp());
+    Toolbox::compileRegex (&regexSwellsL3           , config->getSwellsL3Regexp());
+    Toolbox::compileRegex (&regexVoltageL1          , config->getVoltageL1mVRegexp());
+    Toolbox::compileRegex (&regexVoltageL2          , config->getVoltageL2mVRegexp());
+    Toolbox::compileRegex (&regexVoltageL3          , config->getVoltageL3mVRegexp());
+    Toolbox::compileRegex (&regexCurrentL1          , config->getCurrentL1ARegexp());
+    Toolbox::compileRegex (&regexCurrentL2          , config->getCurrentL2ARegexp());
+    Toolbox::compileRegex (&regexCurrentL3          , config->getCurrentL3ARegexp());
+    Toolbox::compileRegex (&regexActiveImportL1     , config->getActiveImportL1WhRegexp());
+    Toolbox::compileRegex (&regexActiveImportL2     , config->getActiveImportL2WhRegexp());
+    Toolbox::compileRegex (&regexActiveImportL3     , config->getActiveImportL3WhRegexp());
+    Toolbox::compileRegex (&regexActiveExportL1     , config->getActiveExportL1WhRegexp());
+    Toolbox::compileRegex (&regexActiveExportL2     , config->getActiveExportL2WhRegexp());
+    Toolbox::compileRegex (&regexActiveExportL3     , config->getActiveExportL3WhRegexp());
+    Toolbox::compileRegex (&regexGasImport          , config->getGasImportRegexp());
+    Toolbox::compileRegex (&regexGasTime            , config->getGasTimeRegexp());
 }
 
 /******************************************************************************\
@@ -253,61 +272,102 @@ SmartMeter* SmartMeter::getInstance()
 * Returns most current meter reading
 *
 \******************************************************************************/
-void SmartMeter::getMeterReading(MeterReading_t* reading)
+void SmartMeter::getMeterReading(meterReading_t* reading)
 {
     *reading=currentReading;
 }
 
 /******************************************************************************\
 *
-* Receive P1 port messages and convert to meter values
-* In simulation mode, a simulated message will be used
+* Periodic processing of the smart meter. Called every SAMPLE_TIME micro seconds.
+* Receive P1 port messages and convert to meter values.
+* In simulation mode, a simulated message will be used.
+* P1 datagram starts with '/' and ends with '!XXXX[CR][LF]' or '![CR][LF]'.
+* '/' and '!' do not occur in the message except as start resp. end
 *
 \******************************************************************************/
 void SmartMeter::process()
 {
     if (serialPortEnable)
     {
-        int  x=0;
+        int x                               =0;
         while ((x=dataAvailable())>0)
         {
             int c=getNextChar();
-            if (c=='!')
+            switch (receiveState)
             {
-                message[messageIndex]='\0'; // terminate the string
-                if (skipFirstMessage)
+            case RECEIVESTATE_IDLE:
+                if (c=='/')
                 {
-                    skipFirstMessage=false;
-                }
-                else
-                {
-                    bool success=processMessage();
-                    if (success)
-                    {
-                        if (!firstMessageProcessed)
-                        {
-                            logger.logInfo("First message succesfully processed");
-                            firstMessageProcessed=true;
-                        }
-                    }
-                }
-                messageCount++;
-                messageIndex=0;
-            }
-            else
-            {
-                message[messageIndex]=c;
-                // prevent the index getting out of bounds
-                if (messageIndex<MAXP1MESSAGESIZE-1)
-                {
+                    // Start of message!!
+                    messageIndex            =0;
+                    message[messageIndex]   =c;
+                    receiveState            =RECEIVESTATE_MESSAGE;
                     messageIndex++;
                 }
+                break;
+            case RECEIVESTATE_MESSAGE:
+                if (c=='/')
+                {
+                    // Unexpected start of message: reset
+                    messageIndex            =0;
+                }
+                else if (c=='!')
+                {
+                    // End of message, awaing message tail with CRC
+                    receiveState=RECEIVESTATE_MESSAGETAIL;
+                }
+                message[messageIndex]       =c;
+                messageIndex++;
+                break;
+            case RECEIVESTATE_MESSAGETAIL:
+                if (c=='/')
+                {
+                    // Unexpected start of message: reset
+                    messageIndex            =0;
+                    receiveState            =RECEIVESTATE_MESSAGE;
+                    message[messageIndex]   =c;
+                    messageIndex++;
+                }
+                else if (c=='\r')
+                {
+                    message[messageIndex]   =c;
+                    messageIndex++;
+                    bool success=validateP1Datagram(message);
+                    if (success)
+                    {
+                        success=processMessage();
+                        if (success)
+                        {
+                            if (!firstMessageProcessed)
+                            {
+                                logger.logInfo("First message succesfully processed");
+                                firstMessageProcessed=true;
+                            }
+                            messageCount++;
+                        }
+                    }
+                    else
+                    {
+                        validationErrors++;
+                    }
+                    receiveState=RECEIVESTATE_IDLE;
+                }
                 else
                 {
-                    logger.logError("Serial port buffer index out of bounds");
+                    message[messageIndex]       =c;
+                    messageIndex++;
                 }
+                break;
             }
+            if (messageIndex>=MAXP1MESSAGESIZE)
+            {
+                receiveState=RECEIVESTATE_IDLE;
+                logger.logError("P1 message buffer overflow; resetting");
+            }
+        
         }
+
         if (x<0)
         {
             // Best what we can do is reinitialize
@@ -332,123 +392,102 @@ void SmartMeter::process()
 
 /******************************************************************************\
 *
-* Execute regex match and process result
+* Validate DSMR P1 datagram
 *
 \******************************************************************************/
-bool SmartMeter::processMatch(regex_t* regex, INT32* var)
+bool SmartMeter::validateP1Datagram(const char *datagram)
 {
-    bool success=false;
-    char* result=matchRegex(regex, message);
-    if (strcmp("", result)!=0)
+    // Check for start ('/') and end ('!')
+    const char *start       = strchr(datagram, '/');
+    const char *end         = strchr(datagram, '!');
+    end++;
+    if (!start || !end || end <= start) 
     {
-        *var=(int)(1000.0*atof(result)+0.5);
-        success=true;
+        logger.logError("P1 validation: Invalid frame bounds");
+        return false;
     }
-    return success;
+    // Ensure 4 hex characters after '!'
+    if (strlen(end) < 5) 
+    {
+        logger.logError("P1 validation: Missing CRC after '!'");
+        return false;
+    }
+    if (strlen(end) > 8) 
+    {
+        logger.logError("P1 validation: More characters than expected");
+        return false;
+    }
+    // Extract received checksum
+
+    uint16_t receivedCrc    = 0;
+    if (sscanf(end, "%4hx", &receivedCrc) != 1) 
+    {
+        logger.logError("P1 validation: Invalid CRC format");
+        return false;
+    }
+
+    // Compute CRC over everything before '!'
+    size_t      dataLen     = (size_t)(end - start);
+    uint16_t    computedCrc = Toolbox::crc16((const uint8_t*)start, dataLen);
+    if (computedCrc == receivedCrc)
+    {
+        return true;  // ✅ Valid
+    }
+    else 
+    {
+        logger.logError("P1 validation: CRC mismatch (computed %04X, received %04X)\n", computedCrc, receivedCrc);
+        return false;
+    }
 }
 
 /******************************************************************************\
 *
 * Process the P1 message. Extract meter values by regexping
+* Processing takes about 6 ms on Raspberry Pi 2 B+
 *
 \******************************************************************************/
 bool SmartMeter::processMessage()
 {
-    char* result;
-
     // Get the current time
     clock->getTime(&currentReading.dateTime);
-
-    bool success;
-    success     =processMatch(&importLowKwh, &currentReading.electricityImportLowWh);
-    if (success)
-    {
-        success =processMatch(&importHighKwh, &currentReading.electricityImportNormalWh);
-    }
-    if (success)
-    {
-        success =processMatch(&exportLowKwh, &currentReading.electricityExportLowWh);
-    }
-    if (success)
-    {
-        success =processMatch(&exportHighKwh, &currentReading.electricityExportNormalWh);
-    }
-    if (success)
-    {
-        success =processMatch(&importKw, &currentReading.electricityImportW);
-    }
-    if (success)
-    {
-        success =processMatch(&exportKw, &currentReading.electricityExportW);
-    }
-    if (success)
-    {
-        result=matchRegex(&gas, message);
-        currentReading.gasImport=(int)(1000.0*atof(result)+0.5);
-    }
-    if (!success)
+    bool s;
+    s =Toolbox::processMatchString(message, &regexTime              ,  currentReading.time                      , P1TIMESTAMPSIZE);
+    s&=Toolbox::processMatchFloat (message, &regexImportLowKwh      , &currentReading.electricityImportLowWh    ,1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexImportHighKwh     , &currentReading.electricityImportNormalWh ,1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexExportLowKwh      , &currentReading.electricityExportLowWh    ,1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexExportHighKwh     , &currentReading.electricityExportNormalWh ,1000.0);
+    s&=Toolbox::processMatchInt   (message, &regexTariff            , &currentReading.tariff);
+    s&=Toolbox::processMatchFloat (message, &regexImportKw          , &currentReading.electricityImportW        ,1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexExportKw          , &currentReading.electricityExportW        ,1000.0);
+    s&=Toolbox::processMatchInt   (message, &regexPowerFailures     , &currentReading.powerFailures);
+    s&=Toolbox::processMatchInt   (message, &regexPowerFailuresLong , &currentReading.powerFailuresLong);
+    s&=Toolbox::processMatchInt   (message, &regexSagsL1            , &currentReading.sagsL1);
+    s&=Toolbox::processMatchInt   (message, &regexSagsL2            , &currentReading.sagsL2);
+    s&=Toolbox::processMatchInt   (message, &regexSagsL3            , &currentReading.sagsL3);
+    s&=Toolbox::processMatchInt   (message, &regexSwellsL1          , &currentReading.swellsL1);
+    s&=Toolbox::processMatchInt   (message, &regexSwellsL2          , &currentReading.swellsL2);
+    s&=Toolbox::processMatchInt   (message, &regexSwellsL3          , &currentReading.swellsL3);
+    s&=Toolbox::processMatchFloat (message, &regexVoltageL1         , &currentReading.voltageL1mV              , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexVoltageL2         , &currentReading.voltageL2mV              , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexVoltageL3         , &currentReading.voltageL3mV              , 1000.0);
+    s&=Toolbox::processMatchInt   (message, &regexCurrentL1         , &currentReading.currentL1A);
+    s&=Toolbox::processMatchInt   (message, &regexCurrentL2         , &currentReading.currentL2A);
+    s&=Toolbox::processMatchInt   (message, &regexCurrentL3         , &currentReading.currentL3A);
+    s&=Toolbox::processMatchFloat (message, &regexActiveImportL1    , &currentReading.activeImportL1Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexActiveImportL2    , &currentReading.activeImportL2Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexActiveImportL3    , &currentReading.activeImportL3Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexActiveExportL1    , &currentReading.activeExportL1Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexActiveExportL2    , &currentReading.activeExportL2Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexActiveExportL3    , &currentReading.activeExportL3Wh         , 1000.0);
+    s&=Toolbox::processMatchFloat (message, &regexGasImport         , &currentReading.gasImport                 ,1000.0);
+    s&=Toolbox::processMatchString(message, &regexGasTime           ,  currentReading.gasTime                   , P1TIMESTAMPSIZE);
+    if (!s)
     {
         logger.logError("Error parsing meter message");
         parseErrors++;
     }
     //dumpCurrentReading();
-    return success;
-}
-
-/******************************************************************************\
-*
-*
-*
-\******************************************************************************/
-void SmartMeter::compileRegex (regex_t* r, const char* regex_text)
-{
-    int status = regcomp (r, regex_text, REG_EXTENDED|REG_NEWLINE);
-    if (status != 0)
-    {
-        regerror (status, r, errorMessage, MAXERRORMSG);
-        logger.logError("Regex error compiling '%s': %s",regex_text, errorMessage);
-    }
-}
-
-/******************************************************************************\
-*
-* Returns the match result or empty string if not found
-*
-\******************************************************************************/
-char* SmartMeter::matchRegex (regex_t* r, const char* to_match)
-{
-    /* "P" is a pointer into the string which points to the end of the
-       previous match. */
-    const char* p       = to_match;
-    /* "N_matches" is the maximum number of matches allowed. */
-    const int n_matches = 10;
-    /* "M" contains the matches found. */
-    regmatch_t m[n_matches];
-
-    int nomatch = regexec (r, p, n_matches, m, 0);
-    if (nomatch)
-    {
-        matchResult[0]='\0';
-        logger.logError("Parsing P1: No more matches.\n %s", to_match);
-    }
-    else
-    {
-        for (int i = 0; i < n_matches; i++)
-        {
-            int start;
-            int finish;
-            if (m[i].rm_so == -1)
-            {
-                break;
-            }
-            start   = m[i].rm_so + (p - to_match);
-            finish  = m[i].rm_eo + (p - to_match);
-//            printf ("'%.*s' (bytes %d:%d)\n", (finish - start),to_match + start, start, finish);
-            sprintf(matchResult, "%.*s", (finish-start), to_match+start);
-        }
-        p += m[0].rm_eo;
-    }
-    return matchResult;
+    return s;
 }
 
 /******************************************************************************\
@@ -458,14 +497,24 @@ char* SmartMeter::matchRegex (regex_t* r, const char* to_match)
 \******************************************************************************/
 void SmartMeter::dumpCurrentReading()
 {
-    logger.logDebug("SMARTMETER MESSAGE");
-    logger.logDebug("Import Wh low:    %d", currentReading.electricityImportLowWh);
-    logger.logDebug("Import Wh normal: %d", currentReading.electricityImportNormalWh);
-    logger.logDebug("Export Wh low:    %d", currentReading.electricityExportLowWh);
-    logger.logDebug("Export Wh normal: %d", currentReading.electricityExportNormalWh);
-    logger.logDebug("Import W:         %d", currentReading.electricityImportW);
-    logger.logDebug("Export W:         %d", currentReading.electricityExportW);
-    logger.logDebug("Gas Import l:     %d", currentReading.gasImport);
+    meterReading_t r=currentReading;
+    logger.logInfo("SMARTMETER MESSAGE");
+    logger.logInfo("Timestring        : %s", r.time);
+    logger.logInfo("Import (Wh) low   : %9d", r.electricityImportLowWh);
+    logger.logInfo("Import (Wh) normal: %9d", r.electricityImportNormalWh);
+    logger.logInfo("Export (Wh) low   : %9d", r.electricityExportLowWh);
+    logger.logInfo("Export (Wh) normal: %9d", r.electricityExportNormalWh);
+    logger.logInfo("Tariff            : %9d", r.tariff);
+    logger.logInfo("Import (W)        : %6d L1 %6d L2 %6d L3 %6d", 
+                                    r.electricityImportW, r.activeImportL1Wh, r.activeImportL2Wh, r.activeImportL3Wh);
+    logger.logInfo("Export (W)        : %6d L1 %6d L2 %6d L3 %6d", 
+                                    r.electricityExportW, r.activeExportL1Wh, r.activeExportL2Wh, r.activeExportL3Wh);
+    logger.logInfo("Power failures    : all %d, long %d", r.powerFailures, r.powerFailuresLong);
+    logger.logInfo("Sags              : L1 %6d L2 %6d L3 %6d", r.sagsL1, r.sagsL2, r.sagsL3);
+    logger.logInfo("Swells            : L1 %6d L2 %6d L3 %6d", r.swellsL1, r.swellsL2, r.swellsL3);
+    logger.logInfo("Voltage (mV)      : L1 %6d L2 %6d L3 %6d", r.voltageL1mV, r.voltageL2mV, r.voltageL3mV);
+    logger.logInfo("Current (A)       : L1 %6d L2 %6d L3 %6d", r.currentL1A, r.currentL2A, r.currentL3A);
+    logger.logInfo("Gas Import (l)    : %d (%s)", r.gasImport, r.gasTime);
 }
 
 /******************************************************************************\
@@ -516,7 +565,7 @@ INT32 SmartMeter::getCurrentExportPower()
 
 /******************************************************************************\
 *
-* Start the first measurement
+* Start the first measurement: store current reading.
 *
 \******************************************************************************/
 void SmartMeter::startMeasurement()
@@ -526,15 +575,18 @@ void SmartMeter::startMeasurement()
 
 /******************************************************************************\
 *
-* 
+* Copy the most recent measurements to measurements and restart measuring
 *
 \******************************************************************************/
-void  SmartMeter::retrieveAndRestartMeasurement(Measurement_t *measurement)
+void  SmartMeter::retrieveAndRestartMeasurement(measurement_t *measurement)
 {
+    strncpy(measurement->p1Time     , currentReading.time   , P1TIMESTAMPSIZE+1);
+    strncpy(measurement->gasTime    , currentReading.gasTime, P1TIMESTAMPSIZE+1);
     measurement->electricityImportLow   =currentReading.electricityImportLowWh;
     measurement->electricityExportLow   =currentReading.electricityExportLowWh;
     measurement->electricityImportNormal=currentReading.electricityImportNormalWh;
     measurement->electricityExportNormal=currentReading.electricityExportNormalWh;
+    measurement->tariff                 =currentReading.tariff;
     measurement->gasImport              =currentReading.gasImport;
 
     INT32 energy                        =(currentReading.electricityImportLowWh   -startReading.electricityImportLowWh   )+
@@ -543,10 +595,28 @@ void  SmartMeter::retrieveAndRestartMeasurement(Measurement_t *measurement)
                                          (currentReading.electricityExportNormalWh-startReading.electricityExportNormalWh);
     measurement->netPower               =DECIWATT_PER_WATT*energy*MINUTES_PER_HOUR/MEASUREMENT_INTERVAL;
 
+    measurement->powerFailures          =currentReading.powerFailures;
+    measurement->powerFailuresLong      =currentReading.powerFailuresLong;
+    measurement->sagsL1                 =currentReading.sagsL1;
+    measurement->sagsL2                 =currentReading.sagsL2;
+    measurement->sagsL3                 =currentReading.sagsL3;
+    measurement->swellsL1               =currentReading.swellsL1;
+    measurement->swellsL2               =currentReading.swellsL2;
+    measurement->swellsL3               =currentReading.swellsL3;
+    measurement->voltageL1              =currentReading.voltageL1mV;
+    measurement->voltageL2              =currentReading.voltageL2mV;
+    measurement->voltageL3              =currentReading.voltageL3mV;
+    measurement->currentL1              =currentReading.currentL1A;
+    measurement->currentL2              =currentReading.currentL2A;
+    measurement->currentL3              =currentReading.currentL3A;
+    measurement->activeImportPowerL1    =currentReading.activeImportL1Wh;
+    measurement->activeImportPowerL2    =currentReading.activeImportL2Wh;
+    measurement->activeImportPowerL3    =currentReading.activeImportL3Wh;
+    measurement->activeExportPowerL1    =currentReading.activeExportL1Wh;
+    measurement->activeExportPowerL2    =currentReading.activeExportL2Wh;
+    measurement->activeExportPowerL3    =currentReading.activeExportL3Wh;
     startMeasurement(); // start next measurement
 }
-
-
 
 /******************************************************************************\
 *
@@ -614,9 +684,8 @@ char SmartMeter::getNextChar()
 \******************************************************************************/
 void SmartMeter::logStatus()
 {
-    logger.logReport("Serial port: messages %ld, port resets %d, parse errors %d, enabled %d, sim %d", 
-                    messageCount, serialPortResetCounter, parseErrors, serialPortEnable, simulationMode);
+    logger.logReport("Serial port: simulation mode %d, enabled %d, messages processed %d", 
+                    simulationMode, serialPortEnable, messageCount);
+    logger.logReport("             port resets %d, parse errors %d, validation errors %d", 
+                    serialPortResetCounter, parseErrors, validationErrors);
 }
-
-
-

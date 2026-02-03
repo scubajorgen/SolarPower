@@ -14,6 +14,7 @@
 #include "common.h"
 #include "Datastore.h"
 #include "Configuration.h"
+#include "Toolbox.h"
 
 #define FIVEMINUTEINDEX_IX                      0
 #define FIVEMINUTEINDEX_DATETIME                1
@@ -246,7 +247,7 @@ void DataStore::closeDatabase(void)
 * This method stores a measurement
 *
 \******************************************************************************/
-bool DataStore::storeFiveMinuteValue(fiveMinuteMeasurement_t* mmt)
+bool DataStore::storeFiveMinuteValue(measurement_t* mmt)
 {
     MYSQL_ROW       row;
     bool            error;
@@ -260,26 +261,37 @@ bool DataStore::storeFiveMinuteValue(fiveMinuteMeasurement_t* mmt)
     if (row==0)
     {
         logger.logDebug("Inserting 5 minute measurement for %04d-%02d-%02d %02d:%02d:%02d", 
-                         mmt->datetime.year+2000, mmt->datetime.month, mmt->datetime.day, mmt->datetime.hour, mmt->datetime.minute, mmt->datetime.second);
-        snprintf(queryString, QUERYSTRINGSIZE,
-                 "INSERT INTO solarenergyfiveminutes (datetime, timeindex, year, "
-                 "pulse1, pulsepower1, pulsemaxpower1, pulsemeter1, "
-                 "pulse2, pulsepower2, pulsemaxpower2, pulsemeter2, "
-                 "pulse3, pulsepower3, pulsemaxpower3, pulsemeter3, "
-                 "electricityimportlow, electricityimportnormal, electricityexportlow, electricityexportnormal, gasimport, "
-                 "grosspower, netpower) VALUES ("
-                 "'%04d-%02d-%02d %02d:%02d:%02d', %d, %d,"
-                 "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, "
-                 "%d, %d, %d, %d, %d, %d, %d"
-                 ")",
-                mmt->datetime.year+2000, mmt->datetime.month, mmt->datetime.day, mmt->datetime.hour, mmt->datetime.minute, mmt->datetime.second, mmt->timeIndex, mmt->year,
-                mmt->pulse[0], mmt->pulsePower[0], mmt->pulseMaxPower[0], mmt->pulseMeter[0],
-                mmt->pulse[1], mmt->pulsePower[1], mmt->pulseMaxPower[1], mmt->pulseMeter[1],
-                mmt->pulse[2], mmt->pulsePower[2], mmt->pulseMaxPower[2], mmt->pulseMeter[2],
-                mmt->electricityImportLow, mmt->electricityImportNormal, mmt->electricityExportLow, mmt->electricityExportNormal, mmt->gasImport,
-                mmt->grossPower, mmt->netPower
-                );
+                         mmt->datetime.year, mmt->datetime.month, mmt->datetime.day, mmt->datetime.hour, mmt->datetime.minute, mmt->datetime.second);
+        // Build the query - ~ 906 chars
+        Toolbox::stringReset (queryString);
+        Toolbox::stringAppend(queryString, "INSERT INTO solarenergyfiveminutes (datetime, timeindex, year, "
+                                           "pulse1, pulsepower1, pulsemaxpower1, pulsemeter1, pulse2, pulsepower2, "
+                                           "pulsemaxpower2, pulsemeter2, pulse3, pulsepower3, pulsemaxpower3, pulsemeter3, p1time, electricityimportlow, ");
+        Toolbox::stringAppend(queryString, "electricityimportnormal, electricityexportlow, electricityexportnormal, tariff, powerfailures, "
+                                           "powerfailureslong, sagsl1, sagsl2, sagsl3, swellsl1, swellsl2, swellsl3, voltagel1, voltagel2, voltagel3, ");
+        Toolbox::stringAppend(queryString, "currentl1, currentl2, currentl3, actpowerimportl1, actpowerimportl2, actpowerimportl3, actpowerexportl1, "
+                                           "actpowerexportl2, actpowerexportl3, grosspower, netpower, gasimport, gastime) VALUES (");
+        Toolbox::stringAppend(queryString, "'%04d-%02d-%02d %02d:%02d:%02d', ", 
+                                            mmt->datetime.year, mmt->datetime.month, mmt->datetime.day, 
+                                            mmt->datetime.hour, mmt->datetime.minute, mmt->datetime.second);
+        Toolbox::stringAppend(queryString, "%d, %d, ", mmt->timeIndex, mmt->year);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, %d, ", mmt->pulse[0], mmt->pulsePower[0], mmt->pulseMaxPower[0], mmt->pulseMeter[0]);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, %d, ", mmt->pulse[1], mmt->pulsePower[1], mmt->pulseMaxPower[1], mmt->pulseMeter[1]);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, %d, ", mmt->pulse[2], mmt->pulsePower[2], mmt->pulseMaxPower[2], mmt->pulseMeter[2]);
+        Toolbox::stringAppend(queryString, "'%s', %d, %d, %d, %d, ", mmt->p1Time, mmt->electricityImportLow, mmt->electricityImportNormal,
+                                                                                  mmt->electricityExportLow, mmt->electricityExportNormal);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->tariff, mmt->powerFailures, mmt->powerFailuresLong);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->sagsL1, mmt->sagsL2, mmt->sagsL3);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->swellsL1, mmt->swellsL2, mmt->swellsL3);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->voltageL1, mmt->voltageL2, mmt->voltageL3);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->currentL1, mmt->currentL2, mmt->currentL3);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->activeImportPowerL1, mmt->activeImportPowerL2, mmt->activeImportPowerL3);
+        Toolbox::stringAppend(queryString, "%d, %d, %d, ", mmt->activeExportPowerL1, mmt->activeExportPowerL2, mmt->activeExportPowerL3);
+        Toolbox::stringAppend(queryString, "%d, %d, ", mmt->grossPower, mmt->netPower);
+        Toolbox::stringAppend(queryString, "%d, '%s'", mmt->gasImport, mmt->gasTime);
+        Toolbox::stringAppend(queryString, ")");
         query(queryString);
+
         error=false;
     }
     else
@@ -297,10 +309,9 @@ bool DataStore::storeFiveMinuteValue(fiveMinuteMeasurement_t* mmt)
 * NOT USED...
 *
 \******************************************************************************/
-void DataStore::getFiveMinuteValue(int timeIndex, int year, fiveMinuteMeasurement_t* measurement)
+void DataStore::getFiveMinuteValue(int timeIndex, int year, measurement_t* measurement)
 {
     MYSQL_ROW       row;
-//    MYSQL_RES*      res;
     int             numRows;
 
     snprintf(queryString, QUERYSTRINGSIZE, "SELECT * FROM solarenergyfiveminutes WHERE timeindex=%d and year=%d;", timeIndex, year);
@@ -588,7 +599,7 @@ bool DataStore::storeInstanteneousPowerMax(instantMax_t* maxs)
 
     bool error              =false;
     // Take the date from the first max value.
-    sprintf(dateString, "%4d-%02d-%02d", maxs->time[0].year+2000, maxs->time[0].month, maxs->time[0].day);
+    sprintf(dateString, "%4d-%02d-%02d", maxs->time[0].year, maxs->time[0].month, maxs->time[0].day);
 
     snprintf(queryString, QUERYSTRINGSIZE, "SELECT * FROM solarenergyday WHERE date=\"%s\"", dateString);
 
