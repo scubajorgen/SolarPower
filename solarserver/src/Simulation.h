@@ -49,6 +49,7 @@ private:
     double              volumeGas;
     bool                normalTariff;
     static char         simulationReading[];  // A simulated Smart Meter reading from P1
+    int                 fatalCount=0;
 
 
 

@@ -254,7 +254,6 @@ void Scheduler::preScheduleIntialise()
     {
         client->acknowledgeMeasurements();
     }
-
     // Request all available instant power max values
     error=client->requestStoredInstantMaxValues();
     if (!error)

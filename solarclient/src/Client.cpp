@@ -351,7 +351,7 @@ bool Client::requestMeasurements()
                             }
 
                             mmt.timeIndex=timeIndex;
-
+ 
                             Clock::calculateTime(mmt.timeIndex, &day, &month, &hour, &minute);
 
                             bool error=dataStore->storeFiveMinuteValue(&mmt);

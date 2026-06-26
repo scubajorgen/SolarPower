@@ -325,6 +325,7 @@ void Simulation::findSimValueByTime(int hour, int minute, int second)
     }
     if (found<0)
     {
+        fatalCount++;
         logger.logFatal("Error estimating simulation value");
     }
 
@@ -346,11 +347,13 @@ void Simulation::findSimValueByTime(int hour, int minute, int second)
     powersCurrent.minute                =minute;
     powersCurrent.seconds               =second;
 
+    // At the boundaries, print some information
     if (previousPowerIndex!=found)
     {
-        logger.logInfo("Simulating: %02d:%02d:%02d pulse 1 %d W, pulse 2 %d W, pulse 3 %d W, gross power usage %d W, gas usage %d l/h",
-                         powers[i1].hour, powers[i1].minute, powers[i1].seconds,
-                         powersCurrent.pulseMeterPower[0], powersCurrent.pulseMeterPower[1], powersCurrent.pulseMeterPower[2], powersCurrent.grossPowerUsage, powersCurrent.gasFlow);
+        logger.logInfo("Simulating: %02d:%02d:%02d (ix %d) pulse 1 %d W, pulse 2 %d W, pulse 3 %d W, gross power usage %d W, gas usage %d l/h, fatal %d",
+                         powers[i1].hour, powers[i1].minute, powers[i1].seconds, found,
+                         powersCurrent.pulseMeterPower[0], powersCurrent.pulseMeterPower[1], 
+                         powersCurrent.pulseMeterPower[2], powersCurrent.grossPowerUsage, powersCurrent.gasFlow, fatalCount);
         previousPowerIndex=found;
     }
 }
