@@ -341,7 +341,7 @@ void SmartMeter::process()
                         {
                             if (!firstMessageProcessed)
                             {
-                                logger.logInfo("First message succesfully processed");
+                                logger.logInfo("First smart meter datagram succesfully processed");
                                 firstMessageProcessed=true;
                             }
                             messageCount++;
@@ -576,6 +576,7 @@ void SmartMeter::startMeasurement()
 /******************************************************************************\
 *
 * Copy the most recent measurements to measurements and restart measuring
+* This method needs to be called at the end of each measurement interval.
 *
 \******************************************************************************/
 void  SmartMeter::retrieveAndRestartMeasurement(measurement_t *measurement)
@@ -589,11 +590,15 @@ void  SmartMeter::retrieveAndRestartMeasurement(measurement_t *measurement)
     measurement->tariff                 =currentReading.tariff;
     measurement->gasImport              =currentReading.gasImport;
 
+
     INT32 energy                        =(currentReading.electricityImportLowWh   -startReading.electricityImportLowWh   )+
                                          (currentReading.electricityImportNormalWh-startReading.electricityImportNormalWh)-
                                          (currentReading.electricityExportLowWh   -startReading.electricityExportLowWh   )-
                                          (currentReading.electricityExportNormalWh-startReading.electricityExportNormalWh);
-    measurement->netPower               =DECIWATT_PER_WATT*energy*MINUTES_PER_HOUR/MEASUREMENT_INTERVAL;
+
+    int seconds=(int)(currentReading.dateTime.epoch-startReading.dateTime.epoch+0.5);
+    logger.logInfo("Smartmeter seconds %d", seconds);
+    measurement->netPower               =DECIWATT_PER_WATT*energy*(MINUTES_PER_HOUR*SECONDS_PER_MINUTE)/seconds;
 
     measurement->powerFailures          =currentReading.powerFailures;
     measurement->powerFailuresLong      =currentReading.powerFailuresLong;
@@ -688,4 +693,14 @@ void SmartMeter::logStatus()
                     simulationMode, serialPortEnable, messageCount);
     logger.logReport("             port resets %d, parse errors %d, validation errors %d", 
                     serialPortResetCounter, parseErrors, validationErrors);
+}
+
+/******************************************************************************\
+*
+* Indicates whether a first valid reading has been processed yet
+*
+\******************************************************************************/
+bool SmartMeter::hasReading()
+{
+    return firstMessageProcessed;
 }

@@ -55,6 +55,8 @@ private:
     Clock*              solarClock;
     solarTime_t         pulseTime;
     solarTime_t         schedulerStartTime;
+    solarTime_t         measuringStartTime;
+    bool                firstMeasurement;
 
     INT32               startTimeIndex;
     INT32               previousTimeIndex;

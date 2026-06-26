@@ -309,6 +309,8 @@ Simulation* Simulation::getInstance()
 /******************************************************************************\
 *
 * Helper: Returns the current active simulation value
+* Establishes the current simulation value by interpolating between the two 
+* nearest simulation values
 *
 \******************************************************************************/
 void Simulation::findSimValueByTime(int hour, int minute, int second)

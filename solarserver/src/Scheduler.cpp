@@ -43,6 +43,12 @@ void* schedulerTask(void* param)
     int  tenMillisecondPeriodCounter= 0;
     int  publishIntervalCounter     = 0;
 
+    // First start with the simulation process, to ensure that we have simulated values before starting the measurement process
+    if (scheduler->simulationMode)
+    {
+        scheduler->simulation->process();
+    }
+
     // the task loop
     while (!localCloseTask)
     {
@@ -132,6 +138,7 @@ Scheduler::Scheduler()
 
     // initialise the measuring state machine
     measureState            =MEASURESTATE_IDLE;
+    firstMeasurement        =true;
 
     // initialise the counting state machine
     ioPins                  =IoPins::getInstance();
@@ -247,6 +254,14 @@ void Scheduler::storeAndResetMeasurement()
     for (int i=0; i<MAX_PULSE_COUNTERS; i++)
     {
         counters[i]->retrieveAndRestartMeasurement(&measurement);
+        if (firstMeasurement)
+        {
+            // For the first measurement we need to correct the values, since the measurement
+            // interval was shorter than the normal interval. We do this by scaling the values to the normal interval.
+            int intervalSeconds=(int)(measurement.datetime.epoch-measuringStartTime.epoch+0.5);
+            logger.logInfo("Scaling first measurement for pulse counter %d, measurement interval was %d seconds", i, intervalSeconds);
+            counters[i]->scaleMeasurement(&measurement, intervalSeconds);
+        }
         if (counters[i]->isProductionMeter())
         {
             production+=measurement.pulsePower[i];
@@ -258,6 +273,7 @@ void Scheduler::storeAndResetMeasurement()
 
     // Calculate the average gross power usage for the interval
     measurement.grossPower=measurement.netPower+production;
+
     pthread_mutex_unlock(&mutex);
 
     measurementStorage->appendMeasurement(&measurement);
@@ -297,58 +313,65 @@ void Scheduler::storeAndResetMaxPowerValues()
 \******************************************************************************/
 void Scheduler::measureStateMachine()
 {
+    int remainingSeconds;
     solarClock->getTime(&pulseTime);
     year=pulseTime.year;
 
     switch (measureState)
     {
-    case MEASURESTATE_IDLE:
-        if (((pulseTime.minute%MEASUREMENT_INTERVAL)==0) && (pulseTime.second<2))
-        {
-            // Now the start of the 1st measurement period has passed!!!
-            // This means: record the time index of this interval and start counting!
-
-            // calculate the index in the year of the 1st measurement
-            startTimeIndex      =Clock::calculateYearTimeIndex(&pulseTime);
-            previousTimeIndex   =startTimeIndex;
-            previousYear        =year;
-
-            resetMeasurement();
-
-            logger.logInfo("First 5 min boundary encountered. Started measuring...");
-            measureState=MEASURESTATE_COLLECTED;
-        }
-        break;
-
-    case MEASURESTATE_WAITING:
-        // The state waits for a measurment interval boundary. Eg. if the interval is 5 minutes
-        // it triggers at 0:00, 0:05, 0:10 hr
-        // It is executed only at the start of this minute between 0:00:00-0:00:02, etc
-        if ((pulseTime.minute%MEASUREMENT_INTERVAL)==0)
-        {
-            // In fact, timeIndex is the time index of NEXT period
-            timeIndex=Clock::calculateYearTimeIndex(&pulseTime);
-            storeAndResetMeasurement();
-            previousTimeIndex   =timeIndex;
-            previousYear        =year;
-
-            // After the final interval of previous day has been stored (starting at 23:55, ending at 00:00)
-            // store and reset the instant max counter
-            if ((pulseTime.hour==0) && (pulseTime.minute==0))
+        case MEASURESTATE_IDLE:
+            // We start if we have at least a minimum measurement interval size before the next measurement interval boundary. 
+            // Prerequisite is that we have a valid reading from the smart meter, otherwise we cannot start measuring
+            remainingSeconds=(MEASUREMENT_INTERVAL-(pulseTime.minute%MEASUREMENT_INTERVAL))*SECONDS_PER_MINUTE-pulseTime.second;
+            if (remainingSeconds>MINIMUM_INTERVAL_SIZE && smartMeter->hasReading())
             {
-                storeAndResetMaxPowerValues();
+                // This means: record the time index of this interval and start counting/measuring for the 1st measurement!
+
+                // calculate the index in the year of the 1st measurement
+                startTimeIndex      =Clock::calculateYearTimeIndex(&pulseTime);
+                previousTimeIndex   =startTimeIndex;
+                previousYear        =year;
+                measuringStartTime  =pulseTime;
+                firstMeasurement    =true;
+
+                resetMeasurement();
+
+                logger.logInfo("Started measuring @ %02d:%02d:%02d, current timeIndex %d, remaining time for interval: %d seconds", 
+                                pulseTime.hour, pulseTime.minute, pulseTime.second, startTimeIndex, remainingSeconds);
+                measureState=MEASURESTATE_COLLECTED;
             }
-            measureState=MEASURESTATE_COLLECTED;
-        }
         break;
 
-    case MEASURESTATE_COLLECTED:
-        // Stay insensitive till measurement minute has passed
-        if ((pulseTime.minute%MEASUREMENT_INTERVAL)!=0)
-        {
-            measureState=MEASURESTATE_WAITING;
-        }
-        break;
+        case MEASURESTATE_WAITING:
+            // The state waits for a measurment interval boundary. Eg. if the interval is 5 minutes
+            // it triggers at 0:00, 0:05, 0:10 hr
+            // It is executed only at the start of this minute between 0:00:00-0:00:02, etc
+            if ((pulseTime.minute%MEASUREMENT_INTERVAL)==0)
+            {
+                // In fact, timeIndex is the time index of NEXT period
+                timeIndex=Clock::calculateYearTimeIndex(&pulseTime);
+                storeAndResetMeasurement();
+                previousTimeIndex   =timeIndex;
+                previousYear        =year;
+
+                // After the final interval of previous day has been stored (starting at 23:55, ending at 00:00)
+                // store and reset the instant max counter
+                if ((pulseTime.hour==0) && (pulseTime.minute==0))
+                {
+                    storeAndResetMaxPowerValues();
+                }
+                firstMeasurement    =false;
+                measureState=MEASURESTATE_COLLECTED;
+            }
+            break;
+
+        case MEASURESTATE_COLLECTED:
+            // Stay insensitive till measurement minute has passed
+            if ((pulseTime.minute%MEASUREMENT_INTERVAL)!=0)
+            {
+                measureState=MEASURESTATE_WAITING;
+            }
+            break;
     }
 }
 

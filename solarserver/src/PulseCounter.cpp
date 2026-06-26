@@ -283,6 +283,21 @@ void PulseCounter::retrieveAndRestartMeasurement(measurement_t *measurement)
 
 /******************************************************************************\
 *
+* This function scales the measured values to the normal interval, 
+* if the measurement interval was shorter than the normal interval.
+*
+\******************************************************************************/
+void PulseCounter::scaleMeasurement(measurement_t *measurement, int intervalSeconds)
+{
+    if (intervalSeconds>0)
+    {
+        measurement->pulse[pulseId]         = (INT32)((INT64)measurement->pulse[pulseId]*(MEASUREMENT_INTERVAL*SECONDS_PER_MINUTE)/intervalSeconds);
+        measurement->pulsePower[pulseId]    = (INT32)((INT64)measurement->pulsePower[pulseId]*(MEASUREMENT_INTERVAL*SECONDS_PER_MINUTE)/intervalSeconds);
+    }
+}
+
+/******************************************************************************\
+*
 * Returns current pulse counter value
 *
 \******************************************************************************/

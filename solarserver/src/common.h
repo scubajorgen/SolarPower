@@ -8,13 +8,17 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION                         "6.2"
+#define VERSION                         "6.3"
 
 // This define defines the interval of measurement in minutes
 // Note: an hour should be dividable by this amount
 // Hence: 1, 2, 3, 4, 5, 6, 10, 12, ... minutes
 // Probably 5 is the only one that works...
 #define MEASUREMENT_INTERVAL            5
+
+// Minimum interval size in seconds (5 - 299 (=measurement interval))
+// The larger this period, the more accurate the first measurement will be, since it will be scaled to the normal measurement interval.S
+#define MINIMUM_INTERVAL_SIZE           30
 
 #define DAYS_PER_YEAR                   366
 #define HOURS_PER_DAY                   24

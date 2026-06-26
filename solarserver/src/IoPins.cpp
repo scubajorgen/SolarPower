@@ -305,6 +305,12 @@ int IoPins::convertPinNameToPin(char* pinName)
 *  ______|                 |_________________________________|
 *          TESTSTATE_HIGH             TESTSTATE_LOW
 *         < TESTCOUNT_HIGH ><         sampleCount            >
+*
+* In practice this simulated pulse isn't very accurate, since it assumed that 
+* the function is called every 0.01 seconds, which is not always the case, 
+* since the scheduler task can be delayed by other tasks. This means pulses are 
+* lagging, resulting in a lower power value measured.
+*
 \******************************************************************************/
 int IoPins::getTestPulseValue(int pulseNo)
 {

@@ -111,4 +111,5 @@ public:
     bool                    isProductionMeter               ();
     pulseMeterUsage_t       getMeterUsage                   ();
     void                    logStatus                       ();
+    void                    scaleMeasurement                (measurement_t *measurement, int intervalSeconds);
 };

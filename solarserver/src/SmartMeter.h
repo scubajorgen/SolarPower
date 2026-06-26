@@ -148,6 +148,7 @@ public:
     INT32   getCurrentImportPower           () override;
     INT32   getCurrentExportPower           () override;
     void    logStatus                       ();
+    bool    hasReading                      ();
 };
 
 
