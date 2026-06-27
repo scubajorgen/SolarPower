@@ -322,7 +322,7 @@ bool Client::requestMeasurements()
                         int hour;
                         int minute;
                         // If the measurement is valid (contains sensible data) store it in the database
-                        if (timeIndex>=0)
+                        if (timeIndex>=0 && mmt.year>0)
                         {
                             // Make sure we've got the current time
                             daytime         =Clock::getTime();
@@ -351,7 +351,7 @@ bool Client::requestMeasurements()
                             }
 
                             mmt.timeIndex=timeIndex;
- 
+
                             Clock::calculateTime(mmt.timeIndex, &day, &month, &hour, &minute);
 
                             bool error=dataStore->storeFiveMinuteValue(&mmt);
@@ -755,7 +755,7 @@ void Client::convertStatistics(int timeIndex)
     for (int counterNo=0; counterNo<MAX_PULSE_COUNTERS; counterNo++)
     {
         // if at least 90% of the measurements are available, store the measurement in the day value database
-        if (statistics.numberOfRecordsInSum[counterNo]>INTERVALS_PER_DAY*9/10)
+        if (statistics.numberOfRecordsInSum[counterNo]>INTERVALS_PER_DAY*STATISTICS_COMPLETENESS/100)
         {
             // calculate the energy in Wh
             // E [Wh] = average P [dW]  * HOURS_PER_DAY / DECIWATT_PER_WATT
@@ -775,6 +775,8 @@ void Client::convertStatistics(int timeIndex)
             dayRecord.maxPower[counterNo]       =INVALID_MEASUREMENT;
             dayRecord.maxPowerIndex[counterNo]  =INVALID_MEASUREMENT;
             dayRecord.minutesActive[counterNo]  =INVALID_MEASUREMENT;
+            logger.logInfo("Not enough measurements for counter %d to store daily statistics: %d/%d", 
+                           counterNo+1, statistics.numberOfRecordsInSum[counterNo], INTERVALS_PER_DAY);
         }
     }
 }

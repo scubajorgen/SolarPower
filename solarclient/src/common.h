@@ -8,7 +8,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define VERSION                         "6.2"
+#define VERSION                         "6.3"
 
 // This define defines the interval of measurement in minutes
 // Note: an hour should be dividable by this amount
@@ -30,7 +30,6 @@
 #define INTERVALS_PER_DAY               (MINUTES_PER_DAY/MEASUREMENT_INTERVAL)
 #define INTERVALS_PER_HOUR              (MINUTES_PER_HOUR/MEASUREMENT_INTERVAL)
 
-
 #define INVALID_MEASUREMENT             -1
 #define INVALID_YEAR                    -1
 #define INVALID_ENERGY                  -1.0;
@@ -49,7 +48,14 @@
 
 #define MAX_PULSE_COUNTERS              3
 
-#define PUBLISHINTERVAL                 2
+// The interval in seconds to publish the data to the clients
+#define PUBLISH_INTERVAL                2
+
+// In order for dailystatistics to be stored in the database, 
+// the day must contain at least this percentage of valid measurements.
+// So for 288 5 minute intervals per day 90% means at least 259 valid 
+// measurements at the end of the day.
+#define STATISTICS_COMPLETENESS        90
 
 #define INT8        char
 #define INT16       short
