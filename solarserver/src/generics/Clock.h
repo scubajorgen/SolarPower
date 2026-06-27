@@ -68,6 +68,8 @@ public:
     
     // Solar Client functions
     static  tm*     getTime                     ();
+
+    static INT128   getNanoSeconds              ();
     
     static  int     calculateYearTimeIndex      (int day, int month, int hour, int minute);
     static  int     calculateYearTimeIndex      (int day, int month);

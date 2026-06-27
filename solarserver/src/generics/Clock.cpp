@@ -98,6 +98,20 @@ void Clock::getTime(solarTime_t* solarTime)
 
 /******************************************************************************\
 *
+* This method returns an ever increasing number of nanoseconds. 
+* It counts since some unspecified starting point.
+* It is used for timing. It is accurate to a few microseconds. 
+*
+\******************************************************************************/
+INT128 Clock::getNanoSeconds()
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (INT128)now.tv_sec * 1000000000LL + now.tv_nsec;
+}
+
+/******************************************************************************\
+*
 * This method calculates the unique index of the given time in a year.
 * The year is split in 5 minute periods. A leap year (366 days) is assumed.
 *
