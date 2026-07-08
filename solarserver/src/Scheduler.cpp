@@ -7,17 +7,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "Scheduler.h"
 #include "Configuration.h"
+
+#define NANOSECONDS_PER_MILLISECOND 1000000LL
+#define SLEEPINTERVALMICROSECONDS   1000
+#define TICK_INTERVAL_NANOSECONDS   ((INT128)SAMPLE_TIME*(INT128)NANOSECONDS_PER_SECOND/(INT128)MICROSECONDS_PER_SECOND)
 
 /******************************************************************************\
 * Variables
 \******************************************************************************/
 
 Scheduler*  Scheduler::theInstance=NULL;
-char        teststr[100];
 
 /******************************************************************************\
 * Friend methods
@@ -43,65 +47,93 @@ void* schedulerTask(void* param)
     int  tenMillisecondPeriodCounter= 0;
     int  publishIntervalCounter     = 0;
 
-    // First start with the simulation process, to ensure that we have simulated values before starting the measurement process
+    // First start with the simulation process, to ensure that we have 
+    // simulated values before starting the measurement process
     if (scheduler->simulationMode)
     {
         scheduler->simulation->process();
     }
 
-    // the task loop
+    // The task loop. It is going to be executed at 10 ms boundaries (0 ms, 10 ms, 20 ms, ...)
+    // Calculate the next tick boundary, i.e. the next 10 ms boundary
+    INT128 tick                     =Clock::getNanoSeconds();
+    INT128 nextTickBoundary         =((tick+TICK_INTERVAL_NANOSECONDS)/TICK_INTERVAL_NANOSECONDS)*TICK_INTERVAL_NANOSECONDS;
+    if (nextTickBoundary<=tick)
+    {
+        nextTickBoundary+=TICK_INTERVAL_NANOSECONDS;
+    }
+    scheduler->logger.logInfo("Scheduler task started @ tick: %lld ms, first boundary: %lld ms, interval: %lld ms", 
+                                   tick/NANOSECONDS_PER_MILLISECOND, nextTickBoundary/NANOSECONDS_PER_MILLISECOND, 
+                                   TICK_INTERVAL_NANOSECONDS/NANOSECONDS_PER_MILLISECOND);
     while (!localCloseTask)
     {
-        // every cycle (1/100 s) give processing power to each meter
-        scheduler->processMeters();
-
-        // Every second, execute the measurement state machine
-        if (tenMillisecondPeriodCounter==ONESECOND)
+        tick=Clock::getNanoSeconds();
+        // The 10 ms process
+        if (tick>=nextTickBoundary)
         {
-            // publish last received pulses
-            publishIntervalCounter++;
-            if (publishIntervalCounter>=PUBLISHINTERVAL)
-            {
-                scheduler->publishCounters();
-                publishIntervalCounter=0;
-            }
+            // every cycle/tick give processing power to each meter
+            scheduler->processMeters();
 
-            // toggle led1
-            if (scheduler->led1State)
+            // Every second, execute the measurement state machine and other processes
+            if (tenMillisecondPeriodCounter>=ONESECOND)
             {
-                (scheduler->ioPins)->setLed(IOPINS_LED_HEARTBEAT, 0);
+                // Publish last received pulses (websocket, MQTT)
+                if (publishIntervalCounter>=PUBLISHINTERVAL)
+                {
+                    scheduler->publishCounters();
+                    publishIntervalCounter=0;
+                }
+                else
+                {
+                    publishIntervalCounter++;
+                }
+
+                // Toggle heartbeat LED to show activity
+                if (scheduler->led1State)
+                {
+                    (scheduler->ioPins)->setLed(IOPINS_LED_HEARTBEAT, 0);
+                }
+                else
+                {
+                    (scheduler->ioPins)->setLed(IOPINS_LED_HEARTBEAT, 1);
+                }
+                scheduler->led1State=!scheduler->led1State;
+
+
+                // Execute the measurement statemachine
+                scheduler->measureStateMachine();
+
+                // Every second, give processing to the simulation
+                if (scheduler->simulationMode)
+                {
+                    scheduler->simulation->process();
+                }
+
+                // Reset tenmillisecond counter
+                tenMillisecondPeriodCounter=0;
             }
             else
             {
-                (scheduler->ioPins)->setLed(IOPINS_LED_HEARTBEAT, 1);
+                tenMillisecondPeriodCounter++;
             }
-            scheduler->led1State=!scheduler->led1State;
 
+            INT128 prelockTick      =Clock::getNanoSeconds();
+            // Check whether the task needs to be killed
+            pthread_mutex_lock(&scheduler->mutex);
+            localCloseTask=scheduler->closeTask;
+            pthread_mutex_unlock(&scheduler->mutex);
 
-            // execute the measurement statemachine
-            scheduler->measureStateMachine();
-
-            // Every second, give processing to the simulation
-            if (scheduler->simulationMode)
+            INT128 finishedTick     =Clock::getNanoSeconds();
+            if (finishedTick-tick>TICK_INTERVAL_NANOSECONDS)
             {
-                scheduler->simulation->process();
+                scheduler->logger.logInfo("Execution took to long: %lld us, max 10000 us; prelock %lld us, second counter %d", 
+                                          (finishedTick-tick)/1000LL, (finishedTick-prelockTick)/1000LL, tenMillisecondPeriodCounter);
             }
 
-            // reset tenmillisecond counter
-            tenMillisecondPeriodCounter=0;
+            nextTickBoundary        +=TICK_INTERVAL_NANOSECONDS;
         }
-        else
-        {
-            tenMillisecondPeriodCounter++;
-        }
-
-        // Sleep 10 ms = 10000 us
-        usleep(SAMPLE_TIME);
-
-        // Check whether the task needs to be killed
-        pthread_mutex_lock(&scheduler->mutex);
-        localCloseTask=scheduler->closeTask;
-        pthread_mutex_unlock(&scheduler->mutex);
+        // Sleep 1 ms = 1000 us
+        usleep(SLEEPINTERVALMICROSECONDS);
     }
 
     // Signal the task bailing out
@@ -109,7 +141,7 @@ void* schedulerTask(void* param)
     scheduler->taskRunning=false;
     pthread_mutex_unlock(&scheduler->mutex);
 
-    // end of excercise
+    // End of excercise
     pthread_exit(NULL);
     return  NULL;
 }
@@ -322,7 +354,7 @@ void Scheduler::measureStateMachine()
         case MEASURESTATE_IDLE:
             // We start if we have at least a minimum measurement interval size before the next measurement interval boundary. 
             // Prerequisite is that we have a valid reading from the smart meter, otherwise we cannot start measuring
-            remainingSeconds=(MEASUREMENT_INTERVAL-(pulseTime.minute%MEASUREMENT_INTERVAL))*SECONDS_PER_MINUTE-pulseTime.second;
+            remainingSeconds        =(MEASUREMENT_INTERVAL-(pulseTime.minute%MEASUREMENT_INTERVAL))*SECONDS_PER_MINUTE-pulseTime.second;
             if (remainingSeconds>MINIMUM_INTERVAL_SIZE && smartMeter->hasReading())
             {
                 // This means: record the time index of this interval and start counting/measuring for the 1st measurement!
@@ -395,7 +427,6 @@ void Scheduler::publishCounters()
                 solarPublish->postMessage(pulseTime, pulseId, power);
             }
         }
-        pthread_mutex_unlock(&mutex);
 
         INT32 netPower          =smartMeter->getCurrentNetPower();
         INT32 productionPower   =0;
@@ -410,6 +441,7 @@ void Scheduler::publishCounters()
         solarPublish->postMessage(pulseTime,
                                 GROSSPOWER,
                                 netPower+productionPower);
+        pthread_mutex_unlock(&mutex);
     }
 }
 
@@ -494,15 +526,11 @@ void Scheduler::stop()
 \******************************************************************************/
 void Scheduler::getCurrentPowerMax(maxPower_t* maxPower)
 {
-    int i;
-
     pthread_mutex_lock(&mutex);
-    i=0;
-    while (i<MAX_PULSE_COUNTERS)
+    for (int i=0; i<MAX_PULSE_COUNTERS; i++)
     {
         // store the maximum value of the day
         counters[i]->getCurrentPowerMax(&(maxPower->maxPowerTimeDiff[i]), &(maxPower->maxPower[i]), &(maxPower->maxPowerTime[i]));
-        i++;
     }
     pthread_mutex_unlock(&mutex);
 }

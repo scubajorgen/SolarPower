@@ -13,9 +13,13 @@
 #include "Simulation.h"
 #include "Toolbox.h"
 
-#define MAXP1MESSAGESIZE        8192
-#define P1TIMESTAMPSIZE         12
-#define SIMULATION_INTERVALS    (1*MICROSECONDS_PER_SECOND/SAMPLE_TIME)
+#define MAXP1MESSAGESIZE            8192
+#define P1TIMESTAMPSIZE             12
+
+// The number of seconds between subsequent simulated messages.
+#define SIMULATION_INTERVAL_SECONDS 1
+// The number of sample intervals between subsequent simulated messages.
+#define SIMULATION_INTERVALS        (SIMULATION_INTERVAL_SECONDS*MICROSECONDS_PER_SECOND/SAMPLE_TIME)
 
 typedef enum
 {
@@ -79,44 +83,16 @@ private:
     char                                    message[MAXP1MESSAGESIZE];
     int                                     messageIndex;
 
-    regex_t                                 regexTime;
-    regex_t                                 regexImportLowKwh;
-    regex_t                                 regexImportHighKwh;
-    regex_t                                 regexExportLowKwh;
-    regex_t                                 regexExportHighKwh;
-    regex_t                                 regexTariff;
-    regex_t                                 regexImportKw;
-    regex_t                                 regexExportKw;
-    regex_t                                 regexPowerFailures;
-    regex_t                                 regexPowerFailuresLong;
-    regex_t                                 regexSagsL1;
-    regex_t                                 regexSagsL2;
-    regex_t                                 regexSagsL3;
-    regex_t                                 regexSwellsL1;
-    regex_t                                 regexSwellsL2;
-    regex_t                                 regexSwellsL3;
-    regex_t                                 regexVoltageL1;
-    regex_t                                 regexVoltageL2;
-    regex_t                                 regexVoltageL3;
-    regex_t                                 regexCurrentL1;
-    regex_t                                 regexCurrentL2;
-    regex_t                                 regexCurrentL3;
-    regex_t                                 regexActiveImportL1;
-    regex_t                                 regexActiveImportL2;
-    regex_t                                 regexActiveImportL3;
-    regex_t                                 regexActiveExportL1;
-    regex_t                                 regexActiveExportL2;
-    regex_t                                 regexActiveExportL3;
-    regex_t                                 regexGasImport;
-    regex_t                                 regexGasTime;
+    char*                                   dsmr;
     meterReading_t                          currentReading;
     meterReading_t                          startReading;
 
     Simulation*                             simulation;
-    bool                                    simulationMode;     // Indicates if the system runs in simulation mode
-    unsigned int                            simPointer;         // Pointer to the next char in simulationReading
-    int                                     simCounter;         // Counts the sample intervals
-    char*                                   simMeterMessage;    // 
+    bool                                    simulationMode;         // Indicates if the system runs in simulation mode
+    unsigned int                            simPointer;             // Pointer to the next char in simulationReading
+    int                                     simCounter;             // Counts the sample intervals
+    char*                                   simMeterMessage;        // The simulated P1 datagram
+    size_t                                  simMeterMessageLength;  // The length of the simulated P1 datagram
 
     // TO DO: guard with mutex
     bool                                    serialPortEnable;
@@ -129,10 +105,11 @@ private:
     SmartMeter                              ();
     ~SmartMeter                             ();
     bool    initializeSerialPort            ();
-    void    initializeRegexp                ();
+    void    initializeObisCodes             ();
     void    deinitializeSerialPort          ();
     bool    validateP1Datagram              (const char *datagram);
     bool    processMessage                  ();
+    bool    processMessageDsmr5             ();
     void    dumpCurrentReading              ();
 
     void    updateSimMessage                ();

@@ -51,36 +51,8 @@ serial_stop_bits                1
 # parity: odd -1, no 0, even 1
 serial_parity                   0
 
-smartmeter_time                 0-0:1\.0\.0\(([0-9]{12})\w\)
-smartmeter_import_kwh_low       1-0:1\.8\.1\(([0-9.]*)\*kWh\)
-smartmeter_import_kwh_high      1-0:1\.8\.2\(([0-9.]*)\*kWh\)
-smartmeter_export_kwh_low       1-0:2\.8\.1\(([0-9.]*)\*kWh\)
-smartmeter_export_kwh_high      1-0:2\.8\.2\(([0-9.]*)\*kWh\)
-smartmeter_import_kw            1-0:1\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_export_kw            1-0:2\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_tariff               0-0:96\.14\.0\(([0-9]{4})\)
-smartmeter_powerfailures        0-0:96\.7\.21\(([0-9]*)\)
-smartmeter_longpowerfailures    0-0:96\.7\.9\(([0-9]*)\)
-smartmeter_sags_l1              1-0:32\.32\.0\(([0-9]*)\)
-smartmeter_sags_l2              1-0:52\.32\.0\(([0-9]*)\)
-smartmeter_sags_l3              1-0:72\.32\.0\(([0-9]*)\)
-smartmeter_swells_l1            1-0:32\.36\.0\(([0-9]*)\)
-smartmeter_swells_l2            1-0:52\.36\.0\(([0-9]*)\)
-smartmeter_swells_l3            1-0:72\.36\.0\(([0-9]*)\)
-smartmeter_voltage_l1           1-0:32\.7\.0\(([0-9.]*)\*V\)
-smartmeter_voltage_l2           1-0:52\.7\.0\(([0-9.]*)\*V\)
-smartmeter_voltage_l3           1-0:72\.7\.0\(([0-9.]*)\*V\)
-smartmeter_current_l1           1-0:31\.7\.0\(([0-9.]*)\*A\)
-smartmeter_current_l2           1-0:51\.7\.0\(([0-9.]*)\*A\)
-smartmeter_current_l3           1-0:71\.7\.0\(([0-9.]*)\*A\)
-smartmeter_importact_l1_kw      1-0:21\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_importact_l2_kw      1-0:41\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_importact_l3_kw      1-0:61\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_exportact_l1_kw      1-0:22\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_exportact_l2_kw      1-0:42\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_exportact_l3_kw      1-0:62\.7\.0\(([0-9.]*)\*kW\)
-smartmeter_gas                  0-1:24\.2\.1\([0-9]*\w\)\(([0-9.]*)\*m3\)
-smartmeter_gas_time             0-1:24\.2\.1\(([0-9]*)\w\)\(.*\*m3\)
+# DSMR version: currently only 5.0.2 is supported, which is the most common version in the Netherlands
+dsmr                            5.0.2
 
 amqp_host                       172.16.1.20
 amqp_port                       5672

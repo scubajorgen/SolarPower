@@ -203,3 +203,97 @@ bool Toolbox::processMatchString(char* message, regex_t* regex, char* var, int l
     }
     return success;
 }
+
+/******************************************************************************\
+*
+* This function parses the P1 message and extracts the value of the OBIS code 
+* given as argument. An OBIS code is for example 1-0:1.8.1 for electricity 
+* import normal tariff.
+* The variable response indicates which obis value to use; normally 1, sometimes
+* two values are returned: [OBIS]([value1])([value2]).
+*
+\******************************************************************************/
+bool Toolbox::getObisValueString(char* message, const char* obisCode, int response, char* var, int length)
+{
+    bool success=false;
+
+    // Find OBIS code
+    char* start             =strstr(message, obisCode);
+    if (start!=NULL)
+    {
+        // Find parenthesis '('
+        bool found=true;
+        for (int i=0; i<response; i++)
+        {
+            found=false;
+            while (!found && *start!='\0')
+            {
+                if (*start=='(')
+                {
+                    found=true;
+                }
+                start++;
+            }
+        }
+
+        if (found)
+        {
+            int index=0;
+            while (*start!=')' && *start!='*' && *start!='\0' && index<length)
+            {
+                var[index]=*(start+index);
+                index++;
+            }
+            var[index]='\0';
+            if (index>0)
+            {
+                success=true;
+            }
+        }
+        else
+        {
+            logger.logError("OBIS code %s found, but no value found", obisCode);
+            var[0]='\0';
+        }
+    }
+    else
+    {
+        logger.logError("OBIS code %s not found in message", obisCode);
+        var[0]='\0';
+    }
+    return success;
+}
+
+/******************************************************************************\
+*
+* This function parses the P1 message and extracts the value of the OBIS code 
+* given as argument. The value is assumed to be a float and is multiplied by 
+* the factor given as argument. It is returned as an integer.
+*
+\******************************************************************************/
+bool Toolbox::getObisValueFloat (char* message, const char* obisCode, int response, INT32* var, float factor)
+{
+    bool success = Toolbox::getObisValueString(message, obisCode, response, matchResult, MAXMATCHSIZE);
+    if (success)
+    {
+        *var=(int)(factor*atof(matchResult)+0.5);
+    }
+    return success;
+}
+
+/******************************************************************************\
+*
+* This function parses the P1 message and extracts the value of the OBIS code 
+* given as argument. The value is assumed to be an integer and is returned as 
+* an integer.
+*
+\******************************************************************************/
+bool Toolbox::getObisValueInt (char* message, const char* obisCode, int response, INT32* var)
+{
+    bool success = Toolbox::getObisValueString(message, obisCode, response, matchResult, MAXMATCHSIZE);
+    if (success)
+    {
+        *var=atoi(matchResult);
+    }
+    return success;
+}

@@ -36,6 +36,10 @@ public:
     static bool         processMatchFloat   (char* message, regex_t* regex, INT32* var, float factor);
     static bool         processMatchInt     (char* message, regex_t* regex, INT32* var);
     static bool         processMatchString  (char* message, regex_t* regex, char* var, int length);
+
+    static bool         getObisValueString  (char* message, const char* obisCode, int response, char* var , int length);
+    static bool         getObisValueFloat   (char* message, const char* obisCode, int response, INT32* var, float factor);
+    static bool         getObisValueInt     (char* message, const char* obisCode, int response, INT32* var);
 };
 
 #endif

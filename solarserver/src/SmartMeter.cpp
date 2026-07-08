@@ -66,7 +66,8 @@ SmartMeter::SmartMeter()
         simulation                          =Simulation::getInstance();
         //readSimFile("./SmartMeterMessage.txt");
         simMeterMessage                     =simulation->getSmartMeterMessage();
-        simPointer                          =strlen(simMeterMessage);
+        simMeterMessageLength               =strlen(simMeterMessage);   // it never changes; store for performance
+        simPointer                          =simMeterMessageLength;
         simCounter                          =SIMULATION_INTERVALS;
         serialPortEnable                    =true;
         serialPortResetCounter              =1;
@@ -76,7 +77,8 @@ SmartMeter::SmartMeter()
         logger.logInfo("Starting Smart Meter with serial port");
         initializeSerialPort();
     }
-    initializeRegexp();
+    Configuration* config                   =Configuration::getInstance();
+    dsmr                                    =config->getDsmr();
 }
 
 /******************************************************************************\
@@ -196,47 +198,6 @@ bool SmartMeter::initializeSerialPort()
     }
     serialPortResetCounter++;
     return error;
-}
-
-/******************************************************************************\
-*
-* Initialize the regular expressions that are used to extract info from P1
-* datagram
-*
-\******************************************************************************/
-void SmartMeter::initializeRegexp()
-{
-    Configuration* config   =Configuration::getInstance();
-    Toolbox::compileRegex (&regexTime               , config->getTimeRegexp());
-    Toolbox::compileRegex (&regexImportLowKwh       , config->getImportLowKwhRegexp());
-    Toolbox::compileRegex (&regexImportHighKwh      , config->getImportHighKwhRegexp());
-    Toolbox::compileRegex (&regexExportLowKwh       , config->getExportLowKwhRegexp());
-    Toolbox::compileRegex (&regexExportHighKwh      , config->getExportHighKwhRegexp());
-    Toolbox::compileRegex (&regexTariff             , config->getTariffRegexp());
-    Toolbox::compileRegex (&regexImportKw           , config->getImportKwRegexp());
-    Toolbox::compileRegex (&regexExportKw           , config->getExportKwRegexp());
-    Toolbox::compileRegex (&regexPowerFailures      , config->getPowerFailuresRegexp());
-    Toolbox::compileRegex (&regexPowerFailuresLong  , config->getLongPowerFailuresRegexp());
-    Toolbox::compileRegex (&regexSagsL1             , config->getSagsL1Regexp());
-    Toolbox::compileRegex (&regexSagsL2             , config->getSagsL2Regexp());
-    Toolbox::compileRegex (&regexSagsL3             , config->getSagsL3Regexp());
-    Toolbox::compileRegex (&regexSwellsL1           , config->getSwellsL1Regexp());
-    Toolbox::compileRegex (&regexSwellsL2           , config->getSwellsL2Regexp());
-    Toolbox::compileRegex (&regexSwellsL3           , config->getSwellsL3Regexp());
-    Toolbox::compileRegex (&regexVoltageL1          , config->getVoltageL1mVRegexp());
-    Toolbox::compileRegex (&regexVoltageL2          , config->getVoltageL2mVRegexp());
-    Toolbox::compileRegex (&regexVoltageL3          , config->getVoltageL3mVRegexp());
-    Toolbox::compileRegex (&regexCurrentL1          , config->getCurrentL1ARegexp());
-    Toolbox::compileRegex (&regexCurrentL2          , config->getCurrentL2ARegexp());
-    Toolbox::compileRegex (&regexCurrentL3          , config->getCurrentL3ARegexp());
-    Toolbox::compileRegex (&regexActiveImportL1     , config->getActiveImportL1WhRegexp());
-    Toolbox::compileRegex (&regexActiveImportL2     , config->getActiveImportL2WhRegexp());
-    Toolbox::compileRegex (&regexActiveImportL3     , config->getActiveImportL3WhRegexp());
-    Toolbox::compileRegex (&regexActiveExportL1     , config->getActiveExportL1WhRegexp());
-    Toolbox::compileRegex (&regexActiveExportL2     , config->getActiveExportL2WhRegexp());
-    Toolbox::compileRegex (&regexActiveExportL3     , config->getActiveExportL3WhRegexp());
-    Toolbox::compileRegex (&regexGasImport          , config->getGasImportRegexp());
-    Toolbox::compileRegex (&regexGasTime            , config->getGasTimeRegexp());
 }
 
 /******************************************************************************\
@@ -368,6 +329,7 @@ void SmartMeter::process()
         
         }
 
+        // If x<0 there was an error reading the serial port. In that case, reinitialize the serial port.
         if (x<0)
         {
             // Best what we can do is reinitialize
@@ -383,6 +345,8 @@ void SmartMeter::process()
                 logger.logError("Error on simulated serial port; simulating reset %d", serialPortResetCounter);
             }
         }
+
+        // Decrease interval counter in case of simulation mode.
         if (simulationMode && simCounter>0)
         {
             simCounter--;
@@ -392,7 +356,7 @@ void SmartMeter::process()
 
 /******************************************************************************\
 *
-* Validate DSMR P1 datagram
+* Validate DSMR P1 datagram; 160 us op Raspberry Pi 2 B+
 *
 \******************************************************************************/
 bool SmartMeter::validateP1Datagram(const char *datagram)
@@ -443,52 +407,75 @@ bool SmartMeter::validateP1Datagram(const char *datagram)
 /******************************************************************************\
 *
 * Process the P1 message. Extract meter values by regexping
-* Processing takes about 6 ms on Raspberry Pi 2 B+
+* Processing using regexp takes about 6 ms on Raspberry Pi 2 B+
+* Processing using getObisValue takes about 0.3 ms on Raspberry Pi 2 B+
 *
 \******************************************************************************/
 bool SmartMeter::processMessage()
 {
-    // Get the current time
+    bool success=false;
+    // Get the current time, i.e. time of reception of the message. 
     clock->getTime(&currentReading.dateTime);
-    bool s;
-    s =Toolbox::processMatchString(message, &regexTime              ,  currentReading.time                      , P1TIMESTAMPSIZE);
-    s&=Toolbox::processMatchFloat (message, &regexImportLowKwh      , &currentReading.electricityImportLowWh    ,1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexImportHighKwh     , &currentReading.electricityImportNormalWh ,1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexExportLowKwh      , &currentReading.electricityExportLowWh    ,1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexExportHighKwh     , &currentReading.electricityExportNormalWh ,1000.0);
-    s&=Toolbox::processMatchInt   (message, &regexTariff            , &currentReading.tariff);
-    s&=Toolbox::processMatchFloat (message, &regexImportKw          , &currentReading.electricityImportW        ,1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexExportKw          , &currentReading.electricityExportW        ,1000.0);
-    s&=Toolbox::processMatchInt   (message, &regexPowerFailures     , &currentReading.powerFailures);
-    s&=Toolbox::processMatchInt   (message, &regexPowerFailuresLong , &currentReading.powerFailuresLong);
-    s&=Toolbox::processMatchInt   (message, &regexSagsL1            , &currentReading.sagsL1);
-    s&=Toolbox::processMatchInt   (message, &regexSagsL2            , &currentReading.sagsL2);
-    s&=Toolbox::processMatchInt   (message, &regexSagsL3            , &currentReading.sagsL3);
-    s&=Toolbox::processMatchInt   (message, &regexSwellsL1          , &currentReading.swellsL1);
-    s&=Toolbox::processMatchInt   (message, &regexSwellsL2          , &currentReading.swellsL2);
-    s&=Toolbox::processMatchInt   (message, &regexSwellsL3          , &currentReading.swellsL3);
-    s&=Toolbox::processMatchFloat (message, &regexVoltageL1         , &currentReading.voltageL1mV              , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexVoltageL2         , &currentReading.voltageL2mV              , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexVoltageL3         , &currentReading.voltageL3mV              , 1000.0);
-    s&=Toolbox::processMatchInt   (message, &regexCurrentL1         , &currentReading.currentL1A);
-    s&=Toolbox::processMatchInt   (message, &regexCurrentL2         , &currentReading.currentL2A);
-    s&=Toolbox::processMatchInt   (message, &regexCurrentL3         , &currentReading.currentL3A);
-    s&=Toolbox::processMatchFloat (message, &regexActiveImportL1    , &currentReading.activeImportL1Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexActiveImportL2    , &currentReading.activeImportL2Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexActiveImportL3    , &currentReading.activeImportL3Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexActiveExportL1    , &currentReading.activeExportL1Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexActiveExportL2    , &currentReading.activeExportL2Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexActiveExportL3    , &currentReading.activeExportL3Wh         , 1000.0);
-    s&=Toolbox::processMatchFloat (message, &regexGasImport         , &currentReading.gasImport                 ,1000.0);
-    s&=Toolbox::processMatchString(message, &regexGasTime           ,  currentReading.gasTime                   , P1TIMESTAMPSIZE);
-    if (!s)
+
+    if (strcmp(dsmr, "5.0.2")==0)
+    {
+        success=processMessageDsmr5();
+    }
+    else
+    {
+        logger.logError("Unknown DSMR version: %s", dsmr);
+    }
+
+    if (!success)
     {
         logger.logError("Error parsing meter message");
         parseErrors++;
     }
     //dumpCurrentReading();
+    return success;
+}
+
+/******************************************************************************\
+*
+* Process the P1 message assuming DSMR 5.0.2.
+*
+\******************************************************************************/
+bool SmartMeter::processMessageDsmr5()
+{
+    bool s=true;
+    s =Toolbox::getObisValueString(message, "0-0:1.0.0",    1, currentReading.time                         , P1TIMESTAMPSIZE);
+    s&=Toolbox::getObisValueFloat (message, "1-0:1.8.1",    1, &currentReading.electricityImportLowWh      ,1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:1.8.2",    1, &currentReading.electricityImportNormalWh   ,1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:2.8.1",    1, &currentReading.electricityExportLowWh      ,1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:2.8.2",    1, &currentReading.electricityExportNormalWh   ,1000.0);
+    s&=Toolbox::getObisValueInt   (message, "0-0:96.14.0",  1, &currentReading.tariff);
+    s&=Toolbox::getObisValueFloat (message, "1-0:1.7.0",    1, &currentReading.electricityImportW          ,1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:2.7.0",    1, &currentReading.electricityExportW          ,1000.0);
+    s&=Toolbox::getObisValueInt   (message, "0-0:96.7.21",  1, &currentReading.powerFailures);
+    s&=Toolbox::getObisValueInt   (message, "0-0:96.7.9",   1, &currentReading.powerFailuresLong);
+    s&=Toolbox::getObisValueInt   (message, "1-0:32.32.0",  1, &currentReading.sagsL1);
+    s&=Toolbox::getObisValueInt   (message, "1-0:52.32.0",  1, &currentReading.sagsL2);
+    s&=Toolbox::getObisValueInt   (message, "1-0:72.32.0",  1, &currentReading.sagsL3);
+    s&=Toolbox::getObisValueInt   (message, "1-0:32.36.0",  1, &currentReading.swellsL1);
+    s&=Toolbox::getObisValueInt   (message, "1-0:52.36.0",  1, &currentReading.swellsL2);
+    s&=Toolbox::getObisValueInt   (message, "1-0:72.36.0",  1, &currentReading.swellsL3);
+    s&=Toolbox::getObisValueFloat (message, "1-0:32.7.0",   1, &currentReading.voltageL1mV                 , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:52.7.0",   1, &currentReading.voltageL2mV                 , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:72.7.0",   1, &currentReading.voltageL3mV                 , 1000.0);
+    s&=Toolbox::getObisValueInt   (message, "1-0:31.7.0",   1, &currentReading.currentL1A);
+    s&=Toolbox::getObisValueInt   (message, "1-0:51.7.0",   1, &currentReading.currentL2A);
+    s&=Toolbox::getObisValueInt   (message, "1-0:71.7.0",   1, &currentReading.currentL3A);
+    s&=Toolbox::getObisValueFloat (message, "1-0:21.7.0",   1, &currentReading.activeImportL1Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:41.7.0",   1, &currentReading.activeImportL2Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:61.7.0",   1, &currentReading.activeImportL3Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:22.7.0",   1, &currentReading.activeExportL1Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:42.7.0",   1, &currentReading.activeExportL2Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "1-0:62.7.0",   1, &currentReading.activeExportL3Wh            , 1000.0);
+    s&=Toolbox::getObisValueFloat (message, "0-1:24.2.1",   2, &currentReading.gasImport                   , 1000.0);
+    s&=Toolbox::getObisValueString(message, "0-1:24.2.1",   1,  currentReading.gasTime                     , P1TIMESTAMPSIZE);
     return s;
 }
+
 
 /******************************************************************************\
 *
@@ -590,14 +577,16 @@ void  SmartMeter::retrieveAndRestartMeasurement(measurement_t *measurement)
     measurement->tariff                 =currentReading.tariff;
     measurement->gasImport              =currentReading.gasImport;
 
-
+    // Net energy imported during interval; negative if energy was exported during interval; in Wh
     INT32 energy                        =(currentReading.electricityImportLowWh   -startReading.electricityImportLowWh   )+
                                          (currentReading.electricityImportNormalWh-startReading.electricityImportNormalWh)-
                                          (currentReading.electricityExportLowWh   -startReading.electricityExportLowWh   )-
                                          (currentReading.electricityExportNormalWh-startReading.electricityExportNormalWh);
 
-    int seconds=(int)(currentReading.dateTime.epoch-startReading.dateTime.epoch+0.5);
-    logger.logInfo("Smartmeter seconds %d", seconds);
+    // Calculate the average net power over past interval; as interval length it takes the difference in seconds 
+    // between receiving time of the two readings; normally 300 s, can be shorter for first interval after start of the program
+    int seconds                         =(int)(currentReading.dateTime.epoch-startReading.dateTime.epoch+0.5);
+    logger.logInfo("Smartmeter seconds between interval readings %d", seconds);
     measurement->netPower               =DECIWATT_PER_WATT*energy*(MINUTES_PER_HOUR*SECONDS_PER_MINUTE)/seconds;
 
     measurement->powerFailures          =currentReading.powerFailures;
@@ -633,14 +622,15 @@ int SmartMeter::dataAvailable()
     int dataAvailable;
     if (simulationMode)
     {
-        // If simulation intervall passed and previous message has been read fuly...
-        if (simPointer==strlen(simMeterMessage) && simCounter==0)
+        // If simulation interval passed and previous message has been read fuly...
+        if (simPointer==simMeterMessageLength && simCounter==0)
         {
-            // Simulate new Smart Meter message
+            // Simulate new Smart Meter message by setting pointer to start of message
             simPointer          =0;
+            // Reset interval counter for next message
             simCounter          =SIMULATION_INTERVALS;
         }
-        dataAvailable=strlen(simMeterMessage)-simPointer;
+        dataAvailable=simMeterMessageLength-simPointer;
         // Simulate serial port error
         if (rand()%1000000==0)
         {
@@ -657,7 +647,8 @@ int SmartMeter::dataAvailable()
 
 /******************************************************************************\
 *
-* This function returns next available char
+* This function returns next available char. In normal mode it is read from 
+* the serial port, in simulation mode it is read from the simulated message.
 *
 \******************************************************************************/
 char SmartMeter::getNextChar()
@@ -665,7 +656,7 @@ char SmartMeter::getNextChar()
     char c;
     if (simulationMode)
     {
-        if (simPointer<strlen(simMeterMessage))
+        if (simPointer<simMeterMessageLength)
         {
             c=simMeterMessage[simPointer];
             simPointer++;
